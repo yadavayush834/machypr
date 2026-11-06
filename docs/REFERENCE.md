@@ -129,7 +129,7 @@ Super+Shift+3 captures the whole desktop, Super+Shift+4 selects a rectangle, and
 
 ## Brave window controls
 
-The Brave launcher exposes the local theme directory read-only to Flatpak and selects GTK 3 integration. Before starting a closed browser profile, `macos-brave-theme` backs up Preferences and enables Chromium’s GTK system theme so WhiteSur renders native red/yellow/green controls. It skips profiles while their singleton lock is present, preserves other preferences, and does not change password-storage settings. Browser preference backups remain local under `~/.local/state/macos-desktop/browser-backups`. Brave picks up the selected Light/Dark GTK variant on its next launch; restart it after changing appearance if needed.
+The Brave launcher exposes the local theme directory read-only to Flatpak and selects GTK 3 integration. Before starting a closed browser profile, `macos-brave-theme` backs up Preferences and enables Chromium’s GTK system theme so WhiteSur renders native red/yellow/green controls. It skips profiles while their singleton lock is present, preserves other preferences, and does not change password-storage settings. Browser preference backups remain local under `~/.local/state/macos-desktop/browser-backups`. Brave uses the desktop settings portal for live Light/Dark GTK changes. The launcher explicitly clears `GTK_THEME`, since that environment override pins the toolbar to its startup variant, and enables `GTK_USE_PORTAL`. Older browser processes launched with the override need one restart.
 
 ## Desktop-wide window controls
 

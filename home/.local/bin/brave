@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 "$HOME/.local/bin/macos-brave-theme"
-appearance=$("$HOME/.local/bin/macos-appearance" status)
-theme=WhiteSur-Light
-[[ $appearance != *'"effective": "dark"'* ]] || theme=WhiteSur-Dark
-exec flatpak run --filesystem=xdg-data/themes:ro --filesystem=xdg-config/gtk-3.0:ro --env="GTK_THEME=$theme" com.brave.Browser --gtk-version=3 "$@"
+# Let GTK consume live desktop settings through the portal. GTK_THEME pins a
+# variant for the process lifetime and leaves light chrome after switching dark.
+exec flatpak run --filesystem=xdg-data/themes:ro --filesystem=xdg-config/gtk-3.0:ro --unset-env=GTK_THEME --env=GTK_USE_PORTAL=1 com.brave.Browser --gtk-version=3 "$@"
