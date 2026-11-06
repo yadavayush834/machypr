@@ -63,9 +63,9 @@ def activate(index):
     _,classname,_,cmd=APPS[index]
     if not classname:spawn(cmd);return
     workspace=query('activeworkspace')
-    if not workspace:return
+    if not workspace or 'name' not in workspace:return
     # Re-query at click time: never follow a stale icon to another workspace.
-    groups=MODEL['workspace_apps'](clients(),workspace['id'],origins)
+    groups=MODEL['workspace_apps'](clients(),workspace.get('id',workspace['name']),origins)
     active=query('activewindow') or {}
     window=MODEL['activation_target'](groups.get(classname,[]),active.get('address'))
     if window:
@@ -192,9 +192,9 @@ def refresh():
     DARK=APPEARANCE['current']()=='dark'
     workspace=query('activeworkspace')
     windows=query('clients')
-    if workspace is None or windows is None:return True
+    if not workspace or 'name' not in workspace or not isinstance(windows,list):return True
     previous=dict(origins)
-    groups=MODEL['workspace_apps'](windows,workspace['id'],origins)
+    groups=MODEL['workspace_apps'](windows,workspace.get('id',workspace['name']),origins)
     if origins!=previous:
         try:
             CACHE.parent.mkdir(parents=True,exist_ok=True)

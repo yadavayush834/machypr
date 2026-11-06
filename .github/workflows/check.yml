@@ -1,4 +1,4 @@
-name: Validate dotfiles
+name: Validate MacHypr
 on: [push, pull_request]
 permissions:
   contents: read

@@ -9,11 +9,11 @@ def workspace_apps(windows, workspace_id, origins):
     for window in windows:
         workspace=window.get('workspace',{})
         if not workspace.get('name','').startswith('special:'):
-            origins[window['address']]=workspace.get('id')
+            origins[window['address']]=workspace.get('id',workspace.get('name'))
     groups={}
     for window in windows:
         workspace=window.get('workspace',{})
-        visible=workspace.get('id')==workspace_id
+        visible=workspace.get('id',workspace.get('name'))==workspace_id
         minimized=workspace.get('name')=='special:minimized' and origins.get(window['address'])==workspace_id
         classname=window.get('class') or window.get('initialClass')
         if classname and window.get('mapped',True) and (visible or minimized):

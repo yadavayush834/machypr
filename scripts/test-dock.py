@@ -38,3 +38,12 @@ assert select(windows,1,origins)=={}
 assert select([],1,origins)=={} and origins=={}
 assert target([]) is None
 print('Dock workspace filtering, unpinned apps, local activation, moves and minimized ownership passed.')
+
+named=window('named','kitty',1)
+named['workspace']={'address':'design','name':'design'}
+origins={}
+assert select([named],'design',origins)=={'kitty':[named]}
+named['workspace']={'name':'special:minimized'}
+assert select([named],'design',origins)=={'kitty':[named]}
+assert select([named],'other',origins)=={}
+print('Named desktops without numeric IDs preserve dock and minimized ownership.')

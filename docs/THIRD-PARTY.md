@@ -8,6 +8,7 @@ Upstream projects retain their licenses and trademarks.
 | [WhiteSur GTK](https://github.com/vinceliuice/WhiteSur-gtk-theme) | GTK styling, generated GTK4 CSS/assets and wallpaper | `d5782652d412137e26fb8ff55b55a5572e4c6995`, MIT; [included license](LICENSE-WhiteSur-GTK) |
 | [WhiteSur icons](https://github.com/vinceliuice/WhiteSur-icon-theme) | Downloaded by the theme installer | `73d8040da51a9ed74e47c7366e7e9ff437601a5c`; see upstream COPYING |
 | [WhiteSur cursors](https://github.com/vinceliuice/WhiteSur-cursors) | Downloaded by the theme installer | `e190baf618ed95ee217d2fd45589bd309b37672b`; see upstream LICENSE |
+| [hyprbars](https://github.com/hyprwm/hyprland-plugins/tree/d2427d4d15b36df40468f5a58bbd67cdba19835d/hyprbars) | Desktop-wide traffic-light title bars, built locally | `d2427d4d15b36df40468f5a58bbd67cdba19835d`, BSD-3-Clause |
 | [Inter](https://github.com/rsms/inter) | UI font, installed through Arch's `inter-font` package | SIL Open Font License 1.1 |
 | [JetBrains Mono Nerd Font](https://www.nerdfonts.com/) | Terminal font and status glyphs | Installed through Arch's `ttf-jetbrains-mono-nerd` package; upstream licenses |
 

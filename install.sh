@@ -8,7 +8,7 @@ activate=true
 dry_run=false
 usage() {
  cat <<'HELP'
-macOS-style Arch Linux / Hyprland desktop installer
+MacHypr — macOS-inspired Arch Linux / Hyprland desktop installer
 Usage: ./install.sh [options]
   --dry-run        Show package groups and target files; change nothing
   --config-only    Apply configuration only (dependencies already installed)
