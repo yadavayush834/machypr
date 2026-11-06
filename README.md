@@ -87,6 +87,7 @@ Big Sur notification, volume-key and screenshot effects are downloaded locally b
 | Launchpad / Terminal / Finder-style file manager | `Super + Space` / `Super + Return` / `Super + E` |
 | Toggle dock | `Super + Alt + D` |
 | Window switcher / close window | `Super + Tab` / `Super + W` |
+| Next / previous tab in the focused window | `Alt + Tab` / `Alt + Shift + Tab` |
 | Move / resize a window | `Super + left drag` / `Super + right drag` |
 | Switch desktop / send window to desktop | `Super + 1–9` / `Super + Shift + 1–9` |
 | Toggle floating / keyboard focus | `Super + Shift + Space` / `Super + arrows` |

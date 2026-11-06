@@ -62,6 +62,9 @@ hl.window_rule({match={class=".*"},float=true,size={1040,590},center=true})
 hl.layer_rule({match={namespace="waybar"},blur=true})
 hl.layer_rule({match={namespace="macos-dock"},blur=false})
 hl.bind("SUPER + Tab",hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-menu window"))
+-- Cycle tabs inside the focused application window.
+hl.bind("ALT + Tab",hl.dsp.send_shortcut({mods="CTRL",key="Tab"}))
+hl.bind("ALT + SHIFT + Tab",hl.dsp.send_shortcut({mods="CTRL SHIFT",key="Tab"}))
 
 -- Request native GTK title bars with WhiteSur traffic-light buttons.
 hl.env("GTK_CSD", "1")
