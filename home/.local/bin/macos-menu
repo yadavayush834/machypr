@@ -13,9 +13,11 @@ def shortcut(mods,key):
  subprocess.run(['hyprctl','dispatch','hl.dsp.send_shortcut({mods='+json.dumps(mods)+',key='+json.dumps(key)+',window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 def launch(*args):return lambda:run(list(args))
 def key(mods,k):return lambda:shortcut(mods,k)
+appearance_module=runpy.run_path(str(home/'.local/bin/macos-appearance'))
+appearance_dark=appearance_module['current']()=='dark'
 status_module=runpy.run_path(str(home/'.local/bin/macos-status'))
 menus={
-'apple': [('About This Desktop',launch('notify-send','Desktop','WhiteSur desktop • macOS styling on Hyprland')),None,('System Settings…',lambda:show_control()),('App Store…',launch('brave','https://flathub.org')),None,('Sleep',launch('systemctl','suspend')),('Restart…',launch(local('arch-power'))),('Shut Down…',launch(local('arch-power'))),None,('Lock Screen',launch('hyprlock'))],
+'apple': [('About This Desktop',launch('notify-send','Desktop','WhiteSur desktop • macOS styling on Hyprland')),None,('System Settings…',lambda:show_control()),('Appearance…',launch(local('macos-menu'),'appearance')),('App Store…',launch('brave','https://flathub.org')),None,('Sleep',launch('systemctl','suspend')),('Restart…',launch(local('arch-power'))),('Shut Down…',launch(local('arch-power'))),None,('Lock Screen',launch('hyprlock'))],
 'app':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Hide Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace="special:minimized",follow=false,window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL)),None,('Quit',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
 'file':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Open…',key('CTRL','o')),None,('Home',launch('dolphin',str(home))),('Downloads',launch('dolphin',str(home/'Downloads'))),None,('Close Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
 'edit':[('Undo',key('CTRL','z')),('Redo',key('CTRL SHIFT','z')),None,('Cut',key('CTRL','x')),('Copy',key('CTRL SHIFT' if app=='kitty' else 'CTRL','c')),('Paste',key('CTRL SHIFT' if app=='kitty' else 'CTRL','v')),('Select All',key('CTRL','a'))],
@@ -24,6 +26,7 @@ menus={
 'help':[('Keyboard Shortcuts',launch(local('macos-menu'),'shortcuts')),('Desktop Appearance',launch('gnome-theme-switcher'))],
 'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch('gnome-theme-switcher')),('Lock Screen',launch('hyprlock'))],
 'shortcuts':[(label,lambda:None) for label in ['⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Launchpad','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
+'appearance':[(('✓ ' if appearance_module['preference']()['mode']==mode else '')+label,launch(local('macos-appearance'),mode)) for mode,label in [('light','Light'),('dark','Dark'),('auto','Auto (Light 7 AM–7 PM)')]],
 'calendar':[(datetime.datetime.now().strftime('%A, %d %B %Y'),lambda:None)]}
 def show_control():run([local('macos-menu'),'control'])
 if kind=='window':
@@ -62,6 +65,9 @@ if kind == 'control':
   tile.connect('clicked',lambda _,command=command:(Gtk.main_quit(),run(command)))
   grid.attach(tile,index%2,index//2,1,1)
  panel.pack_start(grid,False,False,0)
+ appearance_button=Gtk.Button(label='Appearance…  '+appearance_module['preference']()['mode'].title())
+ appearance_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'appearance'])))
+ panel.pack_start(appearance_button,False,False,0)
  for title,initial,callback in [('Display',70,lambda value:run(['brightnessctl','set',str(round(value))+'%'])),('Sound',50,lambda value:run(['wpctl','set-volume','@DEFAULT_AUDIO_SINK@',str(round(value))+'%']))]:
   try:
    if title=='Sound':
@@ -105,6 +111,9 @@ for item in ([] if kind in ('battery','control') else menus.get(kind,menus['appl
 provider=Gtk.CssProvider();provider.load_from_data(b'#battery-note {font-size:11px;color:#bdbdc3;} label {font-family:Inter;font-size:13px;color:#f5f5f7;} window {background:rgba(38,38,42,0.98);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),provider,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 light=Gtk.CssProvider();light.load_from_data(b'window {background:rgba(241,241,245,0.97);border:1px solid rgba(45,45,55,0.25);border-radius:7px;color:#202024;} label,button {color:#202024;font-family:Inter;font-size:13px;} button {min-width:220px;padding:3px 9px;} button:hover,button:focus {background:#0969da;color:white;} button:hover label,button:focus label {color:white;} #battery-note {color:#66666d;font-size:11px;} .control-tile {min-width:110px;min-height:37px;background:rgba(255,255,255,0.55);border-radius:8px;padding:7px;} .control-tile label {font-size:12px;} .control-tile:focus {background:rgba(255,255,255,0.55);color:#202024;} .control-tile:focus label {color:#202024;} scale trough {min-height:14px;background:#d1d1d8;border-radius:7px;} scale highlight {background:#ffffff;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:white;border:1px solid #b8b8bd;border-radius:50%;} separator {background:rgba(40,40,50,0.16);}')
-Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),light,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
+if not appearance_dark:Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),light,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
+else:
+ dark=Gtk.CssProvider();dark.load_from_data(b'.control-tile {min-width:110px;min-height:37px;background:#38383d;border-radius:8px;padding:7px;} .control-tile label {color:#f5f5f7;font-size:12px;} scale trough {min-height:14px;background:#55555c;border-radius:7px;} scale highlight {background:#f5f5f7;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:#fafafa;border-radius:50%;}')
+ Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),dark,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
 win.connect('key-press-event',lambda w,e:(Gtk.main_quit() or True) if e.keyval==Gdk.KEY_Escape else False)
 win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit);win.show_all();Gtk.main()

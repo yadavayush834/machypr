@@ -110,3 +110,7 @@ References: [Apple battery status](https://support.apple.com/en-au/guide/mac-hel
 ## Dock rendering
 
 The dock loads WhiteSur SVG artwork at 256px and draws it at logical size with Cairo, avoiding low-resolution Gtk.Image upscaling on fractional-scale screens. The shelf and shadow are drawn separately; compositor layer blur is disabled for this dock so it cannot soften the icons. Hover magnification eases between 52 and 65 logical pixels and affects nearby icons. Labels appear above icons, with dark running indicators below. Move to the bottom edge to reveal the dock, or use Super+Alt+D. The dock hides after the pointer leaves.
+
+## Appearance
+
+Use Apple menu → Appearance or Control Center → Appearance. `macos-appearance light`, `macos-appearance dark`, and `macos-appearance auto` also work from a terminal. Auto follows a local-time 07:00–19:00 schedule; it does not calculate sunrise or sunset. The menu bar keeps the schedule active while running. Preferences are stored in `~/.config/macos-desktop/appearance.json`. Native surfaces refresh within two seconds; some GTK/Qt applications need reopening. Wallpaper and icon artwork remain unchanged. Both WhiteSur GTK variants are installed by the theme installer.

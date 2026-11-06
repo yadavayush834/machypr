@@ -10,4 +10,5 @@ while IFS= read -r -d '' file; do
 done < <(find "$root" -path "$root/.git" -prune -o -type f -print0)
 python3 "$root/scripts/check.py"
 python3 "$root/scripts/test-status.py"
+python3 "$root/scripts/test-appearance.py"
 echo 'All checks passed.'

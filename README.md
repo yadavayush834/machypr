@@ -68,6 +68,12 @@ Brave, VS Code, office/creative apps, development tools and example projects.
 The dock opens installed applications; desktop-only users can install their
 preferred browser and editor separately.
 
+## Light and dark appearance
+
+Choose **Apple menu → Appearance…** or **Control Center → Appearance…**, then select **Light**, **Dark**, or **Auto**. Changes apply live to the bar, dock, menus, Launchpad, GTK apps, terminal, notifications and supported app palettes. Auto uses Light from 7 AM to 7 PM, Dark overnight. Your choice is saved across logins. Some applications need reopening to adopt their new theme.
+
+![Dark appearance](assets/macos-dark.png)
+
 ## Shortcuts
 
 **Super** means your keyboard's Windows/logo key (shown as ⌘ in the shortcut menu).

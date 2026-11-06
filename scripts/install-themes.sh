@@ -21,7 +21,7 @@ for dependency in sassc glib-compile-resources xmllint gtk-update-icon-cache; do
  command -v "$dependency" >/dev/null || { echo "Missing theme dependency: $dependency" >&2; exit 1; }
 done
 fetch WhiteSur-gtk-theme d5782652d412137e26fb8ff55b55a5572e4c6995
-bash "$fetched/install.sh" -d "$HOME/.local/share/themes" -c dark -o normal
+bash "$fetched/install.sh" -d "$HOME/.local/share/themes" -c dark -c light -o normal
 fetch WhiteSur-icon-theme 73d8040da51a9ed74e47c7366e7e9ff437601a5c
 bash "$fetched/install.sh" -d "$HOME/.local/share/icons"
 fetch WhiteSur-cursors e190baf618ed95ee217d2fd45589bd309b37672b

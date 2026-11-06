@@ -128,6 +128,7 @@ if $activate && [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   exit 1
  fi
  python "$root/scripts/session-settings.py" "$backup"
+ "$HOME/.local/bin/macos-appearance" sync
  for daemon in waybar hyprpaper hypridle dunst; do pkill -u "$UID" -x "$daemon" || true; done
  pkill -u "$UID" -f "^/usr/bin/python $HOME/.local/bin/macos-dock$" || true
  pkill -u "$UID" -f "^/usr/bin/python $HOME/.local/bin/macos-menubar$" || true

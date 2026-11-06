@@ -16,7 +16,9 @@ from gi.repository import GtkLayerShell as Layer
 
 HOME=Path.home()
 STATUS=runpy.run_path(str(HOME/'.local/bin/macos-status'))
+APPEARANCE=runpy.run_path(str(HOME/'.local/bin/macos-appearance'))
 INK=(.10,.10,.12)
+DARK=False
 
 def launch(*args):
     subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
@@ -52,7 +54,7 @@ class Symbol(Gtk.DrawingArea):
                 points=[(12.5,2.5),(8.1,8.5),(11.4,8.5),(10.7,13.5),(15.9,6.9),(12.3,6.9)]
                 cr.move_to(*points[0])
                 for point in points[1:]:cr.line_to(*point)
-                cr.close_path();cr.set_source_rgb(.91,.91,.93);cr.set_line_width(2);cr.stroke_preserve();cr.set_source_rgb(*INK);cr.fill()
+                cr.close_path();cr.set_source_rgb(*((.16,.16,.18) if DARK else (.91,.91,.93)));cr.set_line_width(2);cr.stroke_preserve();cr.set_source_rgb(*INK);cr.fill()
         elif self.kind=='network':
             state,_=STATUS['network_state']()
             # macOS uses the familiar Wi-Fi fan even when its network menu is opened.
@@ -63,7 +65,7 @@ class Symbol(Gtk.DrawingArea):
         elif self.kind=='search':
             cr.arc(10,6.7,4.8,0,math.tau);cr.stroke();cr.move_to(13.7,10.4);cr.line_to(18.3,15);cr.stroke()
         elif self.kind=='control':
-            rounded(cr,3,1,17,5.4,2.7);cr.fill();cr.set_source_rgb(.91,.91,.93);cr.arc(6,3.7,1.65,0,math.tau);cr.fill()
+            rounded(cr,3,1,17,5.4,2.7);cr.fill();cr.set_source_rgb(*((.16,.16,.18) if DARK else (.91,.91,.93)));cr.arc(6,3.7,1.65,0,math.tau);cr.fill()
             cr.set_source_rgb(*INK);rounded(cr,3,9.6,17,5.4,2.7);cr.stroke();cr.arc(17,12.3,1.65,0,math.tau);cr.fill()
         return False
 
@@ -101,7 +103,20 @@ for kind,width in [('battery',27),('network',22),('search',22),('control',24)]:
     row.pack_start(b,False,False,0)
 clock=button('','calendar','clock');row.pack_start(clock,False,False,0)
 names={'kitty':'Terminal','brave-browser':'Brave','code':'Visual Studio Code','org.kde.dolphin':'Finder','org.kde.okular':'Preview','org.pulseaudio.pavucontrol':'Sound'}
+appearance_css=Gtk.CssProvider()
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),appearance_css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
+last_appearance=None
 def update():
+    global DARK,INK,last_appearance
+    effective=APPEARANCE['current']()
+    if effective!=last_appearance:
+        DARK=effective=='dark';INK=(.96,.96,.98) if DARK else (.10,.10,.12)
+        background='rgba(30,30,34,0.88)' if DARK else 'rgba(244,244,247,0.84)'
+        foreground='#f5f5f7' if DARK else '#19191d'
+        appearance_css.load_from_data((f'window#macos-menubar {{background:{background};}} #macos-menubar label,#macos-menubar button {{color:{foreground};}} #macos-menubar button:hover {{background:rgba(128,128,128,0.16);}}').encode())
+        last_appearance=effective
+    if APPEARANCE['preference']().get('applied')!=effective:
+        launch(str(HOME/'.local/bin/macos-appearance'),'sync')
     try:
         active=json.loads(subprocess.check_output(['hyprctl','activewindow','-j'],stderr=subprocess.DEVNULL,timeout=.5));name=names.get(active.get('class'),active.get('class','Finder').split('.')[-1].title()) or 'Finder'
         app.set_label(name)

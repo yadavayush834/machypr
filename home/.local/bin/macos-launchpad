@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import sys
+from pathlib import Path
 import gi
 gi.require_version('Gtk','3.0')
 gi.require_version('GtkLayerShell','0.1')
@@ -52,4 +53,9 @@ window.connect('key-press-event',lambda _,e:(Gtk.main_quit() or True) if e.keyva
 window.connect('destroy',Gtk.main_quit)
 css=Gtk.CssProvider();css.load_from_data(b'''window#launchpad {background:rgba(25,27,34,0.96);border:1px solid rgba(255,255,255,0.20);border-radius:20px;color:#f5f5f7;} searchentry {background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.16);border-radius:11px;padding:5px 12px;} button#app {background:transparent;border:0;box-shadow:none;border-radius:13px;color:#f5f5f7;padding:10px 6px;min-height:86px;} button#app:hover,button#app:focus {background:rgba(255,255,255,0.14);} button#app label {color:#f5f5f7;font-family:Inter,sans-serif;font-size:12px;}''')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+import runpy
+if runpy.run_path(str(Path.home()/'.local/bin/macos-appearance'))['current']()=='light':
+ light=Gtk.CssProvider();light.load_from_data(b'window#launchpad {background:rgba(240,240,245,0.96);color:#202024;} searchentry {background:rgba(255,255,255,0.7);color:#202024;border-color:#bdbdc4;} button#app label {color:#202024;} button#app:hover {background:rgba(0,0,0,0.08);}')
+ Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),light,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
+
 window.show_all();entry.grab_focus();Gtk.main()
