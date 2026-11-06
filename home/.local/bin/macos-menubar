@@ -11,7 +11,8 @@ import gi
 
 gi.require_version('Gtk','3.0')
 gi.require_version('GtkLayerShell','0.1')
-from gi.repository import Gtk, Gdk, GLib, Pango
+gi.require_version('PangoCairo','1.0')
+from gi.repository import Gtk, Gdk, GLib, Pango, PangoCairo
 from gi.repository import GtkLayerShell as Layer
 
 HOME=Path.home()
@@ -92,6 +93,21 @@ class Symbol(Gtk.DrawingArea):
             cr.set_source_rgb(*INK);rounded(cr,3,9.6,17,5.4,2.7);cr.stroke();cr.arc(17,12.3,1.65,0,math.tau);cr.fill()
         return False
 
+class AppleSymbol(Gtk.DrawingArea):
+    def __init__(self):
+        super().__init__();self.set_size_request(38,24);self.connect('draw',self.draw)
+    def draw(self,widget,cr):
+        layout=self.create_pango_layout('\uf179')
+        font=Pango.FontDescription('JetBrainsMono Nerd Font');font.set_absolute_size(16*Pango.SCALE)
+        layout.set_font_description(font)
+        ink,_=layout.get_pixel_extents()
+        # Center the visible silhouette, rather than the font's line box and
+        # asymmetric side bearings. Lift half a pixel to align optically with text.
+        cr.move_to((self.get_allocated_width()-ink.width)/2-ink.x,
+                   (self.get_allocated_height()-ink.height)/2-ink.y-.5)
+        cr.set_source_rgb(*INK);PangoCairo.show_layout(cr,layout)
+        return False
+
 win=Gtk.Window();win.set_name('macos-menubar');win.set_decorated(False);win.set_resizable(False)
 Layer.init_for_window(win);Layer.set_namespace(win,'macos-menubar');Layer.set_layer(win,Layer.Layer.TOP)
 for edge in [Layer.Edge.TOP,Layer.Edge.LEFT,Layer.Edge.RIGHT]:Layer.set_anchor(win,edge,True)
@@ -103,8 +119,7 @@ window#macos-menubar { background:rgba(244,244,247,0.84); border-bottom:1px soli
 #macos-menubar button:hover, #macos-menubar button:focus, #macos-menubar button.open { background:rgba(0,0,0,0.10); }
 #macos-menubar label { font-family:Inter; font-size:13px; font-weight:400; color:#19191d; }
 #macos-menubar .app label { font-weight:600; }
-#macos-menubar .apple { padding:0 12px 0 15px; }
-#macos-menubar .apple label { font-family:"JetBrainsMono Nerd Font";font-size:16px; }
+#macos-menubar .apple { padding:0; }
 #macos-menubar .status { padding:0 6px; }
 #macos-menubar .clock { padding:0 15px 0 8px; }
 #macos-menubar .clock label { font-size:12px; }
@@ -113,7 +128,9 @@ tooltip {background:#ececf0;color:#19191d;border:1px solid #b6b6bb;border-radius
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 def button(label,kind,cls=''):
     b=Gtk.Button(label=label);b.get_style_context().add_class(cls or kind);b.connect('clicked',lambda w:menu(kind,w));b.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK);b.connect('enter-notify-event',hover_menu,kind);return b
-row.pack_start(button('\uf179','apple'),False,False,0)
+apple=button('\uf179','apple');apple.remove(apple.get_child())
+apple_art=AppleSymbol();apple.add(apple_art);apple.get_accessible().set_name('Apple menu')
+row.pack_start(apple,False,False,0)
 app=button('Finder','app');app.get_child().set_max_width_chars(24);app.get_child().set_ellipsize(Pango.EllipsizeMode.END);row.pack_start(app,False,False,0)
 app_menus={}
 for label,kind in [('File','file'),('Edit','edit'),('View','view'),('Go','go'),('Window','window'),('Help','help')]:
@@ -153,6 +170,7 @@ def update():
     clock.set_label(now.strftime('%a %b %-d  %-I:%M %p'))
     clock.set_tooltip_text(now.strftime('%A, %B %-d, %Y'))
     for art in symbols:art.queue_draw()
+    apple_art.queue_draw()
     state=STATUS['battery_state']();symbols[0].get_parent().set_tooltip_text(f"{state['capacity']}% · {state['label']}")
     symbols[1].get_parent().set_tooltip_text(STATUS['network_state']()[1])
     symbols[2].get_parent().set_tooltip_text('Spotlight Search')
