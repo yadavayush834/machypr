@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Bluetooth
+Comment=Pair and manage Bluetooth devices
+Exec=@HOME@/.local/bin/arch-bluetooth
+Icon=bluetooth
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=bluetooth;pair;headphones;devices;

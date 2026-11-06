@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Wi-Fi
+Comment=Connect to a wireless network
+Exec=@HOME@/.local/bin/arch-wifi
+Icon=network-wireless
+Terminal=false
+Categories=Settings;
+Keywords=wifi;wireless;internet;network;

@@ -10,3 +10,5 @@ window#waybar {background:rgba(13,16,22,0.97);color:#b1b7c4;border:1px solid #25
 #custom-power {color:#7f8b9d;padding:0 14px;}
 tooltip {background:#11151c;border:1px solid #303a47;border-radius:6px;} tooltip label {color:#dce5ef;}
 
+
+#bluetooth {padding:0 12px;}

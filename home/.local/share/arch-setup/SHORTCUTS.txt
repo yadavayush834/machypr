@@ -14,6 +14,7 @@ OPEN APPLICATIONS
   Super + F1            This guide
   Super + Alt + W       Choose wallpaper
   Super + Alt + B       Choose Waybar style
+  Super + Alt + N       Wi-Fi
   Launcher search       Type "Keyboard Shortcuts" to open this guide
 
 CLOSE APPLICATIONS

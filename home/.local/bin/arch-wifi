@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+if systemctl is-active --quiet NetworkManager && command -v nmtui >/dev/null; then
+ exec kitty --title Wi-Fi nmtui
+fi
+if systemctl is-active --quiet iwd && command -v iwctl >/dev/null; then
+ # shellcheck disable=SC2016
+ exec kitty --title Wi-Fi bash -c '
+  wifi_device=""
+  for device_path in /sys/class/net/*/wireless; do
+   [[ -d "$device_path" ]] || continue
+   wifi_device=${device_path%/wireless}; wifi_device=${wifi_device##*/}; break
+  done
+  printf "\nWi-Fi setup (iwd)\n\n"
+  if [[ -n "$wifi_device" ]]; then
+   printf "In the prompt below, enter these commands:\n\n  station %s scan\n  station %s get-networks\n  station %s connect YOUR_NETWORK_NAME\n\n" "$wifi_device" "$wifi_device" "$wifi_device"
+   printf "Use quotes around network names with spaces. Enter the Wi-Fi password in the prompt when asked.\nType exit to close.\n\n"
+  else
+   printf "No wireless adapter was detected. Type device list to check.\n\n"
+  fi
+  exec iwctl'
+fi
+notify-send 'Wi-Fi service is unavailable' 'Start NetworkManager or iwd, then open Wi-Fi again.'

@@ -16,6 +16,7 @@
   "modules-right": [
     "pulseaudio",
     "network",
+    "bluetooth",
     "battery",
     "tray",
     "custom/power"
@@ -54,7 +55,8 @@
     "format-ethernet": "\udb80\ude00",
     "format-disconnected": "\udb82\udd2d",
     "max-length": 18,
-    "on-click": "@HOME@/.local/bin/arch-network"
+    "on-click": "@HOME@/.local/bin/arch-wifi",
+    "on-click-right": "@HOME@/.local/bin/arch-network"
   },
   "battery": {
     "format": "{capacity}%",
@@ -78,5 +80,13 @@
     "format": "\u23fb",
     "on-click": "@HOME@/.local/bin/arch-power",
     "tooltip": false
+  },
+  "bluetooth": {
+    "format": "\udb80\udcaf",
+    "format-disabled": "\udb80\udcb2",
+    "format-off": "\udb80\udcb2",
+    "format-connected": "\udb80\udcb1",
+    "tooltip-format": "Bluetooth: {status}\n{num_connections} connected",
+    "on-click": "@HOME@/.local/bin/arch-bluetooth"
   }
 }

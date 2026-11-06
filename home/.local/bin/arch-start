@@ -6,7 +6,9 @@ start hyprpaper
 start dunst
 start hypridle
 systemctl is-active --quiet NetworkManager && start nm-applet --indicator
-systemctl is-active --quiet bluetooth && start blueman-applet
+if systemctl is-active --quiet bluetooth && command -v blueman-applet >/dev/null && ! pgrep -u "$UID" -f '/usr/bin/blueman-applet' >/dev/null; then
+ blueman-applet >/dev/null 2>&1 &
+fi
 if command -v wl-paste >/dev/null && command -v cliphist >/dev/null && ! pgrep -u "$UID" -f '^wl-paste --watch cliphist store' >/dev/null; then
  wl-paste --watch cliphist store >/dev/null 2>&1 &
 fi

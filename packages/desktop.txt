@@ -16,6 +16,9 @@ brightnessctl
 playerctl
 pavucontrol
 blueman
+bluez
+bluez-utils
+iwd
 network-manager-applet
 adwaita-cursors
 pipewire
