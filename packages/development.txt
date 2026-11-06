@@ -15,3 +15,12 @@ jq
 unzip
 zip
 p7zip
+ripgrep
+openssh
+nss
+libsecret
+libxkbfile
+libxss
+alsa-lib
+gtk3
+libcups
