@@ -94,6 +94,12 @@ color14 {a}
     save(config/'hypr/wallpaper-colors.lua', f'''-- Generated from the selected wallpaper.
 hl.config({{general={{col={{active_border={{colors={{"rgba({a[1:]}ee)","rgba({a2[1:]}ee)"}},angle=45}}}}}}}})
 ''')
+    lock = config/'hypr/hyprlock.conf'
+    if lock.exists():
+        content = lock.read_text()
+        content = re.sub(r'(?m)^(\s*outer_color\s*=\s*)rgba\([0-9a-fA-F]{8}\)', lambda m: m.group(1) + 'rgba(' + a[1:] + 'ff)', content)
+        content = re.sub(r'(?m)^(\s*inner_color\s*=\s*)rgba\([0-9a-fA-F]{8}\)', lambda m: m.group(1) + 'rgba(' + bg[1:] + 'dd)', content)
+        save(lock, content)
     dunst = config/'dunst/dunstrc'
     if dunst.exists():
         content = dunst.read_text()
