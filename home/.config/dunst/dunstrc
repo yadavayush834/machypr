@@ -1,4 +1,5 @@
 [global]
+always_run_script = false
 font = Inter 10
 width = 340
 height = (0, 180)
@@ -26,5 +27,4 @@ timeout = 0
 
 [macos_effects]
 summary = "*"
-script = @HOME@/.local/bin/macos-sound notification
-always_run_script = false
+script = @HOME@/.local/bin/macos-notification-sound

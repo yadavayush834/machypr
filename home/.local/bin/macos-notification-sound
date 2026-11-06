@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Dunst appends arguments; sound status is read from its environment.
+exec "$HOME/.local/bin/macos-sound" notification
