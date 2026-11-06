@@ -105,6 +105,8 @@ for the complete offline guide, or press **Super + F1**.
 | Region screenshot | Print Screen |
 | Lock screen / power menu | Super + L / Escape |
 | Reload config | Super + Shift + R |
+| Change wallpaper | Super + Alt + W |
+| Change Waybar style | Super + Alt + B |
 
 Open several apps on the **same workspace** and Hyprland tiles them automatically.
 For example, Super+B then Super+Enter opens a browser and a terminal side by side.
@@ -203,3 +205,5 @@ machine; the source workstation's components were installed and verified locally
 
 MIT licensed configuration and scripts. Arch branding identifies the platform;
 Arch Linux and application names retain their respective owners' trademarks.
+
+Choose wallpapers with **Super + Alt + W** and switch among six Waybar styles with **Super + Alt + B**. Both selectors also appear in the application launcher. Add your own images to `~/.local/share/wallpapers`.

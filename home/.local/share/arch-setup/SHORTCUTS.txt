@@ -12,6 +12,8 @@ OPEN APPLICATIONS
   Super + C             VS Code
   Super + E             Dolphin file manager
   Super + F1            This guide
+  Super + Alt + W       Choose wallpaper
+  Super + Alt + B       Choose Waybar style
   Launcher search       Type "Keyboard Shortcuts" to open this guide
 
 CLOSE APPLICATIONS

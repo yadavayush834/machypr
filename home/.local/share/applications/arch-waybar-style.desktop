@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Change Waybar Style
+Comment=Choose a different desktop appearance
+Exec=@HOME@/.local/bin/arch-waybar-style
+Icon=preferences-desktop-theme
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=waybar;theme;style;bar;
