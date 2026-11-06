@@ -44,3 +44,4 @@ sassc
 glib2
 libxml2
 gsettings-desktop-schemas
+python-cairo

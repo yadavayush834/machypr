@@ -66,3 +66,5 @@ hl.env("GTK_CSD", "1")
 
 -- Toggle the auto-hiding dock with Super+Alt+D.
 run("SUPER + ALT + D","pkill -USR1 -u $(id -u) -f ^/usr/bin/python.*/macos-dock$")
+
+hl.layer_rule({match={namespace="macos-menubar"},blur=true})

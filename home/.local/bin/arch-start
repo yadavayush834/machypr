@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 export PATH="$HOME/.local/bin:$PATH"
 start() { command -v "$1" >/dev/null && { pgrep -u "$UID" -x "$1" >/dev/null || "$@" >/dev/null 2>&1 & }; }
-start waybar
+if ! pgrep -u "$UID" -f "^/usr/bin/python .*macos-menubar$" >/dev/null; then
+ /usr/bin/python "$HOME/.local/bin/macos-menubar" >/dev/null 2>&1 &
+fi
 start hyprpaper
 start dunst
 start hypridle

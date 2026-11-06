@@ -130,6 +130,7 @@ if $activate && [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
  python "$root/scripts/session-settings.py" "$backup"
  for daemon in waybar hyprpaper hypridle dunst; do pkill -u "$UID" -x "$daemon" || true; done
  pkill -u "$UID" -f "^/usr/bin/python $HOME/.local/bin/macos-dock$" || true
+ pkill -u "$UID" -f "^/usr/bin/python $HOME/.local/bin/macos-menubar$" || true
  hyprctl dispatch 'hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/arch-start")'
 fi
 touch "$state/INSTALL-COMPLETE"

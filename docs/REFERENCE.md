@@ -32,11 +32,11 @@ GDM or system-wide files. GTK4 CSS/assets are included in the backed-up template
 | Path | Purpose |
 | --- | --- |
 | `~/.config/hypr/hyprland.lua` | Floating windows, blur, bindings and startup |
-| `~/.config/waybar/` | macOS-style menu bar |
+| `~/.local/bin/macos-menubar` | Native GTK/Cairo macOS-style menu bar (Waybar config remains as fallback) |
 | `~/.local/bin/macos-dock` | GTK layer-shell dock with launch/focus actions |
 | `~/.local/bin/macos-menu` | Apple/shortcut/window/control menus |
 | `~/.local/bin/macos-app-name` | Active app label for Waybar |
-| `~/.local/bin/arch-start` | Session daemons and dock startup |
+| `~/.local/bin/arch-start` | Session daemons, native menu bar and dock startup |
 | `~/.config/gtk-3.0`, `~/.config/gtk-4.0` | WhiteSur application styling |
 | `~/.config/kdeglobals` | Matching Qt palette, icons and fonts |
 | `~/.config/environment.d/60-macos-desktop.conf` | Cursor and GTK CSD preferences |
@@ -103,6 +103,6 @@ Licenses and upstream commit pins are listed in [THIRD-PARTY.md](THIRD-PARTY.md)
 
 ## Battery and menu-bar reference
 
-The compact status group follows the Big Sur/Sonoma menu-bar layout. Original glyphs are bundled in MacDesktopSymbols.ttf to avoid image-loader issues in Waybar 0.15. Battery status is read from Linux power_supply: charging and fully charged on AC show a lightning badge, connected-but-not-charging shows a plug, and unplugged shows charge level. Percentage and power source appear in the live dropdown. The icon does not fake a repeating charge animation. Ethernet and Wi-Fi icons reflect the actual network link.
+The frosted light bar and compact status group follow the Big Sur/Monterey layout. The default bar draws icons directly with Cairo, avoiding Waybar image-loader issues. The previous Waybar configuration remains a fallback. Battery status is read from Linux power_supply: charging and fully charged on AC show a lightning badge; active charging uses green fill, connected-but-not-charging shows a plug, and unplugged shows charge level. Percentage and power source appear in the live dropdown. The icon does not fake a repeating charge animation. Ethernet and Wi-Fi icons reflect the actual network link.
 
 References: [Apple battery status](https://support.apple.com/en-au/guide/mac-help/mchl173fcc57/mac), [Apple Big Sur battery screenshot](https://support.apple.com/en-us/108376), and the [Sonoma screenshot library](https://512pixels.net/projects/aqua-screenshot-library/macos-14-sonoma/).

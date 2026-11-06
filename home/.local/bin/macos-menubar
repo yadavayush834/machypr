@@ -1,0 +1,113 @@
+#!/usr/bin/env python3
+"""Compact, frosted macOS-style menu bar with native Cairo status artwork."""
+import datetime
+import os
+import json
+import math
+from pathlib import Path
+import runpy
+import subprocess
+import gi
+
+gi.require_version('Gtk','3.0')
+gi.require_version('GtkLayerShell','0.1')
+from gi.repository import Gtk, Gdk, GLib
+from gi.repository import GtkLayerShell as Layer
+
+HOME=Path.home()
+STATUS=runpy.run_path(str(HOME/'.local/bin/macos-status'))
+INK=(.10,.10,.12)
+
+def launch(*args):
+    subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+
+def menu(kind, widget):
+    coords=widget.translate_coordinates(win,0,0)
+    env=dict(os.environ,MACOS_MENU_X=str(coords[0] if coords else 8),MACOS_MENU_LIGHT='1')
+    subprocess.Popen([str(HOME/'.local/bin/macos-menu'),kind],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+
+
+def rounded(cr,x,y,w,h,r):
+    cr.new_sub_path()
+    for cx,cy,start in [(x+w-r,y+r,-90),(x+w-r,y+h-r,0),(x+r,y+h-r,90),(x+r,y+r,180)]:
+        cr.arc(cx,cy,r,math.radians(start),math.radians(start+90))
+    cr.close_path()
+
+class Symbol(Gtk.DrawingArea):
+    def __init__(self,kind,width):
+        super().__init__();self.kind=kind;self.set_size_request(width,24);self.connect('draw',self.draw)
+    def draw(self,widget,cr):
+        width=self.get_allocated_width();cr.translate((width-24)/2,4)
+        cr.set_source_rgb(*INK);cr.set_line_width(1.25);cr.set_line_cap(1);cr.set_line_join(1)
+        if self.kind=='battery':
+            state=STATUS['battery_state']();level=state['capacity'] or 0
+            rounded(cr,.7,2.6,20.5,10.8,2.3);cr.stroke()
+            cr.set_source_rgba(*INK,.45);rounded(cr,22,5.6,1.7,4.8,.8);cr.fill()
+            if state['state']=='charging':cr.set_source_rgb(.18,.72,.32)
+            elif level<=10 and not state['connected']:cr.set_source_rgb(.91,.19,.19)
+            else:cr.set_source_rgb(*INK)
+            if level:rounded(cr,2.5,4.4,max(.6,16.8*level/100),7.2,.8);cr.fill()
+            if state['connected']:
+                # Badge cutout, then a filled lightning bolt inside the case.
+                points=[(12.5,2.5),(8.1,8.5),(11.4,8.5),(10.7,13.5),(15.9,6.9),(12.3,6.9)]
+                cr.move_to(*points[0])
+                for point in points[1:]:cr.line_to(*point)
+                cr.close_path();cr.set_source_rgb(.91,.91,.93);cr.set_line_width(2);cr.stroke_preserve();cr.set_source_rgb(*INK);cr.fill()
+        elif self.kind=='network':
+            state,_=STATUS['network_state']()
+            # macOS uses the familiar Wi-Fi fan even when its network menu is opened.
+            for radius in [10,6.7,3.4]:
+                cr.arc(12,15,radius,math.radians(226),math.radians(314));cr.stroke()
+            cr.arc(12,14.7,1,0,math.tau);cr.fill()
+            if state=='offline':cr.move_to(4,1);cr.line_to(20,15);cr.stroke()
+        elif self.kind=='search':
+            cr.arc(10,6.7,4.8,0,math.tau);cr.stroke();cr.move_to(13.7,10.4);cr.line_to(18.3,15);cr.stroke()
+        elif self.kind=='control':
+            rounded(cr,3,1,17,5.4,2.7);cr.fill();cr.set_source_rgb(.91,.91,.93);cr.arc(6,3.7,1.65,0,math.tau);cr.fill()
+            cr.set_source_rgb(*INK);rounded(cr,3,9.6,17,5.4,2.7);cr.stroke();cr.arc(17,12.3,1.65,0,math.tau);cr.fill()
+        return False
+
+win=Gtk.Window();win.set_name('macos-menubar');win.set_decorated(False);win.set_resizable(False)
+Layer.init_for_window(win);Layer.set_namespace(win,'macos-menubar');Layer.set_layer(win,Layer.Layer.TOP)
+for edge in [Layer.Edge.TOP,Layer.Edge.LEFT,Layer.Edge.RIGHT]:Layer.set_anchor(win,edge,True)
+Layer.set_exclusive_zone(win,24)
+row=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL);row.set_size_request(-1,24);win.add(row)
+css=Gtk.CssProvider();css.load_from_data(b'''
+window#macos-menubar { background:rgba(244,244,247,0.84); border-bottom:1px solid rgba(0,0,0,0.10); }
+#macos-menubar button { background:transparent; border:none; border-radius:4px; box-shadow:none; text-shadow:none; min-height:0; min-width:0; margin:0; padding:0 9px; color:#19191d; }
+#macos-menubar button:hover, #macos-menubar button:focus { background:rgba(0,0,0,0.10); }
+#macos-menubar label { font-family:Inter; font-size:13px; font-weight:400; color:#19191d; }
+#macos-menubar .app label { font-weight:600; }
+#macos-menubar .apple { padding:0 14px 0 16px; }
+#macos-menubar .apple label { font-family:"JetBrainsMono Nerd Font";font-size:16px; }
+#macos-menubar .status { padding:0 5px; }
+#macos-menubar .clock { padding:0 15px 0 8px; }
+#macos-menubar .clock label { font-size:12px; }
+tooltip {background:#ececf0;color:#19191d;border:1px solid #b6b6bb;border-radius:5px;font-family:Inter;}
+''')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+def button(label,kind,cls=''):
+    b=Gtk.Button(label=label);b.get_style_context().add_class(cls or kind);b.connect('clicked',lambda w:menu(kind,w));return b
+row.pack_start(button('\uf179','apple'),False,False,0)
+app=button('Finder','app');row.pack_start(app,False,False,0)
+for label,kind in [('File','file'),('Edit','edit'),('View','view'),('Go','go'),('Window','window'),('Help','help')]:row.pack_start(button(label,kind),False,False,0)
+row.pack_start(Gtk.Box(),True,True,0)
+symbols=[]
+for kind,width in [('battery',27),('network',22),('search',22),('control',24)]:
+    b=Gtk.Button();b.get_accessible().set_name({'battery':'Battery status','network':'Network','search':'Spotlight Search','control':'Control Center'}[kind]);b.get_style_context().add_class('status');art=Symbol(kind,width);symbols.append(art);b.add(art)
+    if kind=='search':b.connect('clicked',lambda _:launch('wofi','--show','drun'))
+    elif kind=='network':b.connect('clicked',lambda _:launch(str(HOME/'.local/bin/arch-wifi')))
+    else:b.connect('clicked',lambda w,kind=kind:menu(kind,w))
+    row.pack_start(b,False,False,0)
+clock=button('','calendar','clock');row.pack_start(clock,False,False,0)
+names={'kitty':'Terminal','brave-browser':'Brave','code':'Visual Studio Code','org.kde.dolphin':'Finder','org.kde.okular':'Preview','org.pulseaudio.pavucontrol':'Sound'}
+def update():
+    try:
+        active=json.loads(subprocess.check_output(['hyprctl','activewindow','-j'],stderr=subprocess.DEVNULL,timeout=.5));name=names.get(active.get('class'),active.get('class','Finder').split('.')[-1].title()) or 'Finder'
+        app.set_label(name)
+    except (subprocess.SubprocessError,ValueError):pass
+    clock.set_label(datetime.datetime.now().strftime('%a %b %-d  %-I:%M %p'))
+    for art in symbols:art.queue_draw()
+    state=STATUS['battery_state']();symbols[0].get_parent().set_tooltip_text(f"{state['capacity']}% · {state['label']}")
+    return True
+GLib.timeout_add_seconds(2,update);update();win.show_all();win.connect('destroy',Gtk.main_quit);Gtk.main()

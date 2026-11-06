@@ -20,6 +20,7 @@ menus={
 'file':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Open…',key('CTRL','o')),None,('Home',launch('dolphin',str(home))),('Downloads',launch('dolphin',str(home/'Downloads'))),None,('Close Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
 'edit':[('Undo',key('CTRL','z')),('Redo',key('CTRL SHIFT','z')),None,('Cut',key('CTRL','x')),('Copy',key('CTRL SHIFT' if app=='kitty' else 'CTRL','c')),('Paste',key('CTRL SHIFT' if app=='kitty' else 'CTRL','v')),('Select All',key('CTRL','a'))],
 'view':[('Enter Full Screen',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.fullscreen({mode="fullscreen"})'],stdout=subprocess.DEVNULL)),('Zoom In',key('CTRL','plus')),('Zoom Out',key('CTRL','minus')),('Actual Size',key('CTRL','0')),None,('Show Desktop',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.focus({workspace=8})'],stdout=subprocess.DEVNULL))],
+'go':[('Home',launch('dolphin',str(home))),('Documents',launch('dolphin',str(home/'Documents'))),('Downloads',launch('dolphin',str(home/'Downloads'))),('Applications',launch('wofi','--show','drun'))],
 'help':[('Keyboard Shortcuts',launch(local('macos-menu'),'shortcuts')),('Desktop Appearance',launch('gnome-theme-switcher'))],
 'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch('gnome-theme-switcher')),('Lock Screen',launch('hyprlock'))],
 'shortcuts':[(label,lambda:None) for label in ['⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Launchpad','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
@@ -37,15 +38,46 @@ battery = status_module['battery_state']() if kind == 'battery' else None
 win=Gtk.Window();win.set_name('macos-menu');win.set_decorated(False);win.set_resizable(False)
 GtkLayerShell.init_for_window(win);GtkLayerShell.set_namespace(win,'macos-menu');GtkLayerShell.set_layer(win,GtkLayerShell.Layer.OVERLAY)
 GtkLayerShell.set_keyboard_mode(win,GtkLayerShell.KeyboardMode.EXCLUSIVE)
+GtkLayerShell.set_exclusive_zone(win,-1)
 GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.TOP,True)
-GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.RIGHT if kind in ('battery','control','calendar') else GtkLayerShell.Edge.LEFT,True)
 GtkLayerShell.set_margin(win,GtkLayerShell.Edge.TOP,25)
-x={'apple':8,'app':40,'file':125,'edit':170,'view':215,'window':260,'help':325}.get(kind,950)
-if kind in ('battery','control','calendar'):
+if os.environ.get('MACOS_MENU_X'):
+ GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.LEFT,True)
+ screen=Gdk.Display.get_default().get_monitor(0).get_geometry().width
+ x=min(int(os.environ['MACOS_MENU_X']),screen-305)
+ GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,max(6,x))
+elif kind in ('battery','control','calendar'):
+ GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.RIGHT,True)
  GtkLayerShell.set_margin(win,GtkLayerShell.Edge.RIGHT, {'battery':160,'control':70,'calendar':8}[kind])
 else:
- GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,x)
+ GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.LEFT,True)
+ GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,{'apple':8,'app':40,'file':125,'edit':170,'view':215,'go':260,'window':300,'help':365}.get(kind,8))
 box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=1);box.set_border_width(5);win.add(box)
+if kind == 'control':
+ panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);panel.set_border_width(8);panel.set_size_request(270,-1)
+ grid=Gtk.Grid();grid.set_row_spacing(7);grid.set_column_spacing(7)
+ for index,(title,icon,command) in enumerate([('Wi-Fi','network-wireless-symbolic',[local('arch-wifi')]),('Bluetooth','bluetooth-symbolic',[local('arch-bluetooth')]),('Sound','audio-volume-high-symbolic',['pavucontrol']),('Lock Screen','system-lock-screen-symbolic',['hyprlock'])]):
+  tile=Gtk.Button();tile.get_style_context().add_class('control-tile')
+  inside=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8);image=Gtk.Image.new_from_icon_name(icon,Gtk.IconSize.BUTTON);inside.pack_start(image,False,False,0);inside.pack_start(Gtk.Label(label=title),False,False,0);tile.add(inside)
+  tile.connect('clicked',lambda _,command=command:(Gtk.main_quit(),run(command)))
+  grid.attach(tile,index%2,index//2,1,1)
+ panel.pack_start(grid,False,False,0)
+ for title,initial,callback in [('Display',70,lambda value:run(['brightnessctl','set',str(round(value))+'%'])),('Sound',50,lambda value:run(['wpctl','set-volume','@DEFAULT_AUDIO_SINK@',str(round(value))+'%']))]:
+  try:
+   if title=='Sound':
+    result=subprocess.check_output(['wpctl','get-volume','@DEFAULT_AUDIO_SINK@'],text=True,timeout=.5);initial=float(result.split()[1])*100
+   else:
+    now=float(subprocess.check_output(['brightnessctl','get'],text=True,timeout=.5));maximum=float(subprocess.check_output(['brightnessctl','max'],text=True,timeout=.5));initial=now/maximum*100
+  except (subprocess.SubprocessError,ValueError,IndexError,FileNotFoundError):pass
+  caption=Gtk.Label();caption.set_markup('<b>'+title+'</b>');caption.set_xalign(0);panel.pack_start(caption,False,False,0)
+  slider=Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,1 if title=='Display' else 0,100,1);slider.set_value(initial);slider.set_draw_value(False)
+  def changed(widget,callback=callback):
+   if hasattr(widget,'pending'):GLib.source_remove(widget.pending)
+   def commit():callback(widget.get_value());del widget.pending;return False
+   widget.pending=GLib.timeout_add(100,commit)
+  from gi.repository import GLib
+  slider.connect('value-changed',changed);panel.pack_start(slider,False,False,0)
+ box.pack_start(panel,False,False,0)
 if kind == 'battery':
  content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6);content.set_border_width(8)
  header=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=30)
@@ -65,12 +97,14 @@ if kind == 'battery':
   state.set_text(current['label']);return True
  from gi.repository import GLib
  GLib.timeout_add_seconds(2,update_battery)
-for item in ([] if kind == 'battery' else menus.get(kind,menus['apple'])):
+for item in ([] if kind in ('battery','control') else menus.get(kind,menus['apple'])):
  if item is None:box.pack_start(Gtk.Separator(),False,False,4);continue
  label,action=item;button=Gtk.Button(label=label);button.get_child().set_xalign(0)
  def clicked(button,action=action):win.destroy();Gtk.main_quit();action()
  button.connect('clicked',clicked);box.pack_start(button,False,False,0)
 provider=Gtk.CssProvider();provider.load_from_data(b'#battery-note {font-size:11px;color:#bdbdc3;} label {font-family:Inter;font-size:13px;color:#f5f5f7;} window {background:rgba(38,38,42,0.98);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),provider,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+light=Gtk.CssProvider();light.load_from_data(b'window {background:rgba(241,241,245,0.97);border:1px solid rgba(45,45,55,0.25);border-radius:7px;color:#202024;} label,button {color:#202024;font-family:Inter;font-size:13px;} button {min-width:220px;padding:3px 9px;} button:hover,button:focus {background:#0969da;color:white;} button:hover label,button:focus label {color:white;} #battery-note {color:#66666d;font-size:11px;} .control-tile {min-width:110px;min-height:37px;background:rgba(255,255,255,0.55);border-radius:8px;padding:7px;} .control-tile label {font-size:12px;} .control-tile:focus {background:rgba(255,255,255,0.55);color:#202024;} .control-tile:focus label {color:#202024;} scale trough {min-height:14px;background:#d1d1d8;border-radius:7px;} scale highlight {background:#ffffff;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:white;border:1px solid #b8b8bd;border-radius:50%;} separator {background:rgba(40,40,50,0.16);}')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),light,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
 win.connect('key-press-event',lambda w,e:(Gtk.main_quit() or True) if e.keyval==Gdk.KEY_Escape else False)
 win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit);win.show_all();Gtk.main()
