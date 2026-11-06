@@ -10,4 +10,5 @@ path="$dir/$choice"
 # Hyprpaper 0.8 accepts monitor,path,fit_mode over IPC.
 hyprctl hyprpaper wallpaper ",$path,cover" >/dev/null
 printf 'splash = false\nwallpaper {\n monitor =\n path = %s\n fit_mode = cover\n}\n' "$path" > "$HOME/.config/hypr/hyprpaper.conf"
-notify-send 'Wallpaper changed' "$choice"
+"$HOME/.local/bin/arch-palette" "$path"
+notify-send 'Wallpaper and colors changed' "$choice"

@@ -207,3 +207,9 @@ MIT licensed configuration and scripts. Arch branding identifies the platform;
 Arch Linux and application names retain their respective owners' trademarks.
 
 Choose wallpapers with **Super + Alt + W** and switch among six Waybar styles with **Super + Alt + B**. Both selectors also appear in the application launcher. Add your own images to `~/.local/share/wallpapers`.
+
+Wallpaper selection automatically derives an accent palette for Hyprland borders,
+Waybar, Wofi, Kitty, Dunst and VS Code. Bar style changes keep the current
+wallpaper accent. Existing Kitty windows reload their configuration; some apps
+may need to be reopened. GTK/Qt apps with their own themes may retain their
+own colors. Palettes are generated locally with Pillow.

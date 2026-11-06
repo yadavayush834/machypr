@@ -12,6 +12,7 @@ hl.config({
  input={kb_layout="us",follow_mouse=1,touchpad={natural_scroll=true,tap_to_click=true}},
  misc={disable_hyprland_logo=true,force_default_wallpaper=0}
 })
+pcall(dofile, os.getenv("HOME") .. "/.config/hypr/wallpaper-colors.lua")
 hl.curve("arch", {type="bezier",points={{0.22,1},{0.36,1}}})
 hl.animation({leaf="windows",enabled=true,speed=4,bezier="arch",style="popin 94%"})
 hl.animation({leaf="workspaces",enabled=true,speed=3,bezier="arch",style="slide"})

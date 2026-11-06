@@ -5,5 +5,6 @@ dir="$HOME/.config/waybar/styles"
 choice=$(find "$dir" -maxdepth 1 -type f -name '*.css' -printf '%f\n' | sort | sed 's/\.css$//' | wofi --dmenu --prompt 'Choose Waybar style') || exit 0
 [[ -n "$choice" && "$choice" != */* && -f "$dir/$choice.css" ]] || exit 0
 cp -- "$dir/$choice.css" "$HOME/.config/waybar/style.css"
+"$HOME/.local/bin/arch-palette" --refresh --no-reload
 if pgrep -u "$UID" -x waybar >/dev/null; then pkill -USR2 -u "$UID" -x waybar; else waybar >/dev/null 2>&1 & fi
 notify-send 'Waybar style changed' "$choice"

@@ -34,5 +34,6 @@ noto-fonts
 noto-fonts-emoji
 starship
 python
+python-pillow
 curl
 git
