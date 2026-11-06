@@ -114,3 +114,7 @@ The dock loads WhiteSur SVG artwork at 256px and draws it at logical size with C
 ## Appearance
 
 Use Apple menu → Appearance or Control Center → Appearance. `macos-appearance light`, `macos-appearance dark`, and `macos-appearance auto` also work from a terminal. Auto follows a local-time 07:00–19:00 schedule; it does not calculate sunrise or sunset. The menu bar keeps the schedule active while running. Preferences are stored in `~/.config/macos-desktop/appearance.json`. Native surfaces refresh within two seconds; some GTK/Qt applications need reopening. Wallpaper and icon artwork remain unchanged. Both WhiteSur GTK variants are installed by the theme installer.
+
+## Menu-bar interactions
+
+The active menu is highlighted. Click it again to close; while a menu is open, move across the left-hand menu titles to switch. Only one bar-owned popup is kept open. Terminal uses Shell and Finder exposes Go; other apps retain File/Edit/View shortcuts. Click the date for the calendar. Popups fit their actual width inside the display bounds, and long app names are ellipsized.

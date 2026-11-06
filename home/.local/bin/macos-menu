@@ -84,6 +84,11 @@ if kind == 'control':
   from gi.repository import GLib
   slider.connect('value-changed',changed);panel.pack_start(slider,False,False,0)
  box.pack_start(panel,False,False,0)
+if kind == 'calendar':
+ content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);content.set_border_width(8)
+ today=Gtk.Label();today.set_markup('<b>'+datetime.datetime.now().strftime('%A, %B %-d')+'</b>');today.set_xalign(0);content.pack_start(today,False,False,0)
+ calendar=Gtk.Calendar();calendar.set_display_options(Gtk.CalendarDisplayOptions.SHOW_HEADING|Gtk.CalendarDisplayOptions.SHOW_DAY_NAMES);calendar.mark_day(datetime.datetime.now().day);content.pack_start(calendar,False,False,0)
+ box.pack_start(content,False,False,0)
 if kind == 'battery':
  content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6);content.set_border_width(8)
  header=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=30)
@@ -103,7 +108,7 @@ if kind == 'battery':
   state.set_text(current['label']);return True
  from gi.repository import GLib
  GLib.timeout_add_seconds(2,update_battery)
-for item in ([] if kind in ('battery','control') else menus.get(kind,menus['apple'])):
+for item in ([] if kind in ('battery','control','calendar') else menus.get(kind,menus['apple'])):
  if item is None:box.pack_start(Gtk.Separator(),False,False,4);continue
  label,action=item;button=Gtk.Button(label=label);button.get_child().set_xalign(0)
  def clicked(button,action=action):win.destroy();Gtk.main_quit();action()
@@ -116,4 +121,10 @@ else:
  dark=Gtk.CssProvider();dark.load_from_data(b'.control-tile {min-width:110px;min-height:37px;background:#38383d;border-radius:8px;padding:7px;} .control-tile label {color:#f5f5f7;font-size:12px;} scale trough {min-height:14px;background:#55555c;border-radius:7px;} scale highlight {background:#f5f5f7;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:#fafafa;border-radius:50%;}')
  Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),dark,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
 win.connect('key-press-event',lambda w,e:(Gtk.main_quit() or True) if e.keyval==Gdk.KEY_Escape else False)
-win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit);win.show_all();Gtk.main()
+def fit_popup(widget,allocation):
+ if os.environ.get('MACOS_MENU_X'):
+  screen=Gdk.Display.get_default().get_monitor(0).get_geometry().width
+  margin=max(6,min(int(os.environ['MACOS_MENU_X']),screen-allocation.width-8))
+  if GtkLayerShell.get_margin(win,GtkLayerShell.Edge.LEFT)!=margin:GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,margin)
+win.connect('size-allocate',fit_popup)
+win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit);win.show_all();win.set_focus(None);Gtk.main()

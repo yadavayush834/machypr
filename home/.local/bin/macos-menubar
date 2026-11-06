@@ -11,7 +11,7 @@ import gi
 
 gi.require_version('Gtk','3.0')
 gi.require_version('GtkLayerShell','0.1')
-from gi.repository import Gtk, Gdk, GLib
+from gi.repository import Gtk, Gdk, GLib, Pango
 from gi.repository import GtkLayerShell as Layer
 
 HOME=Path.home()
@@ -23,10 +23,31 @@ DARK=False
 def launch(*args):
     subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 
+popup={'process':None,'button':None,'kind':None}
+def dismiss_popup():
+    process=popup['process']
+    if process is not None and process.poll() is None:process.terminate()
+    if popup['button'] is not None:popup['button'].get_style_context().remove_class('open')
+    popup.update(process=None,button=None,kind=None)
+
 def menu(kind, widget):
+    if popup['kind']==kind and popup['process'] is not None and popup['process'].poll() is None:
+        dismiss_popup();return
+    dismiss_popup()
     coords=widget.translate_coordinates(win,0,0)
-    env=dict(os.environ,MACOS_MENU_X=str(coords[0] if coords else 8),MACOS_MENU_LIGHT='1')
-    subprocess.Popen([str(HOME/'.local/bin/macos-menu'),kind],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+    env=dict(os.environ,MACOS_MENU_X=str(coords[0] if coords else 8))
+    popup['process']=subprocess.Popen([str(HOME/'.local/bin/macos-menu'),kind],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+    popup.update(button=widget,kind=kind)
+    widget.get_style_context().add_class('open')
+
+def hover_menu(widget,event,kind):
+    if popup['process'] is not None and popup['process'].poll() is None and popup['kind']!=kind:menu(kind,widget)
+    return False
+
+def monitor_popup():
+    if popup['process'] is not None and popup['process'].poll() is not None:dismiss_popup()
+    return True
+GLib.timeout_add(120,monitor_popup)
 
 
 def rounded(cr,x,y,w,h,r):
@@ -40,6 +61,8 @@ class Symbol(Gtk.DrawingArea):
         super().__init__();self.kind=kind;self.set_size_request(width,24);self.connect('draw',self.draw)
     def draw(self,widget,cr):
         width=self.get_allocated_width();cr.translate((width-24)/2,4)
+        if self.kind=='battery':cr.translate(1.2,.8);cr.scale(.90,.90)
+        elif self.kind=='control':cr.translate(1.2,.6);cr.scale(.90,.90)
         cr.set_source_rgb(*INK);cr.set_line_width(1.25);cr.set_line_cap(1);cr.set_line_join(1)
         if self.kind=='battery':
             state=STATUS['battery_state']();level=state['capacity'] or 0
@@ -75,24 +98,26 @@ for edge in [Layer.Edge.TOP,Layer.Edge.LEFT,Layer.Edge.RIGHT]:Layer.set_anchor(w
 Layer.set_exclusive_zone(win,24)
 row=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL);row.set_size_request(-1,24);win.add(row)
 css=Gtk.CssProvider();css.load_from_data(b'''
-window#macos-menubar { background:rgba(244,244,247,0.84); border-bottom:1px solid rgba(0,0,0,0.10); }
-#macos-menubar button { background:transparent; border:none; border-radius:4px; box-shadow:none; text-shadow:none; min-height:0; min-width:0; margin:0; padding:0 9px; color:#19191d; }
-#macos-menubar button:hover, #macos-menubar button:focus { background:rgba(0,0,0,0.10); }
+window#macos-menubar { background:rgba(244,244,247,0.84); border-bottom:1px solid rgba(0,0,0,0.14); }
+#macos-menubar button { background:transparent; border:none; border-radius:4px; box-shadow:none; text-shadow:none; min-height:0; min-width:0; margin:0; padding:0 8px; color:#19191d; }
+#macos-menubar button:hover, #macos-menubar button:focus, #macos-menubar button.open { background:rgba(0,0,0,0.10); }
 #macos-menubar label { font-family:Inter; font-size:13px; font-weight:400; color:#19191d; }
 #macos-menubar .app label { font-weight:600; }
-#macos-menubar .apple { padding:0 14px 0 16px; }
+#macos-menubar .apple { padding:0 12px 0 15px; }
 #macos-menubar .apple label { font-family:"JetBrainsMono Nerd Font";font-size:16px; }
-#macos-menubar .status { padding:0 5px; }
+#macos-menubar .status { padding:0 6px; }
 #macos-menubar .clock { padding:0 15px 0 8px; }
 #macos-menubar .clock label { font-size:12px; }
 tooltip {background:#ececf0;color:#19191d;border:1px solid #b6b6bb;border-radius:5px;font-family:Inter;}
 ''')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 def button(label,kind,cls=''):
-    b=Gtk.Button(label=label);b.get_style_context().add_class(cls or kind);b.connect('clicked',lambda w:menu(kind,w));return b
+    b=Gtk.Button(label=label);b.get_style_context().add_class(cls or kind);b.connect('clicked',lambda w:menu(kind,w));b.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK);b.connect('enter-notify-event',hover_menu,kind);return b
 row.pack_start(button('\uf179','apple'),False,False,0)
-app=button('Finder','app');row.pack_start(app,False,False,0)
-for label,kind in [('File','file'),('Edit','edit'),('View','view'),('Go','go'),('Window','window'),('Help','help')]:row.pack_start(button(label,kind),False,False,0)
+app=button('Finder','app');app.get_child().set_max_width_chars(24);app.get_child().set_ellipsize(Pango.EllipsizeMode.END);row.pack_start(app,False,False,0)
+app_menus={}
+for label,kind in [('File','file'),('Edit','edit'),('View','view'),('Go','go'),('Window','window'),('Help','help')]:
+    item=button(label,kind);app_menus[kind]=item;row.pack_start(item,False,False,0)
 row.pack_start(Gtk.Box(),True,True,0)
 symbols=[]
 for kind,width in [('battery',27),('network',22),('search',22),('control',24)]:
@@ -111,18 +136,26 @@ def update():
     effective=APPEARANCE['current']()
     if effective!=last_appearance:
         DARK=effective=='dark';INK=(.96,.96,.98) if DARK else (.10,.10,.12)
-        background='rgba(30,30,34,0.88)' if DARK else 'rgba(244,244,247,0.84)'
+        background='rgba(32,32,35,0.95)' if DARK else 'rgba(244,244,247,0.90)'
         foreground='#f5f5f7' if DARK else '#19191d'
-        appearance_css.load_from_data((f'window#macos-menubar {{background:{background};}} #macos-menubar label,#macos-menubar button {{color:{foreground};}} #macos-menubar button:hover {{background:rgba(128,128,128,0.16);}}').encode())
+        appearance_css.load_from_data((f'window#macos-menubar {{background:{background};}} #macos-menubar label,#macos-menubar button {{color:{foreground};}} #macos-menubar button:hover,#macos-menubar button.open {{background:rgba(128,128,128,0.22);}} tooltip {{background:{background};color:{foreground};}}').encode())
         last_appearance=effective
     if APPEARANCE['preference']().get('applied')!=effective:
         launch(str(HOME/'.local/bin/macos-appearance'),'sync')
     try:
         active=json.loads(subprocess.check_output(['hyprctl','activewindow','-j'],stderr=subprocess.DEVNULL,timeout=.5));name=names.get(active.get('class'),active.get('class','Finder').split('.')[-1].title()) or 'Finder'
-        app.set_label(name)
+        if app.get_label()!=name:app.set_label(name)
+        app_menus['file'].set_label('Shell' if active.get('class')=='kitty' else 'File')
+        app_menus['go'].set_visible(active.get('class') in ('org.kde.dolphin',None,'') or not active)
+        app.set_tooltip_text(name)
     except (subprocess.SubprocessError,ValueError):pass
-    clock.set_label(datetime.datetime.now().strftime('%a %b %-d  %-I:%M %p'))
+    now=datetime.datetime.now()
+    clock.set_label(now.strftime('%a %b %-d  %-I:%M %p'))
+    clock.set_tooltip_text(now.strftime('%A, %B %-d, %Y'))
     for art in symbols:art.queue_draw()
     state=STATUS['battery_state']();symbols[0].get_parent().set_tooltip_text(f"{state['capacity']}% · {state['label']}")
+    symbols[1].get_parent().set_tooltip_text(STATUS['network_state']()[1])
+    symbols[2].get_parent().set_tooltip_text('Spotlight Search')
+    symbols[3].get_parent().set_tooltip_text('Control Center')
     return True
-GLib.timeout_add_seconds(2,update);update();win.show_all();win.connect('destroy',Gtk.main_quit);Gtk.main()
+GLib.timeout_add_seconds(1,update);win.show_all();update();win.connect('destroy',Gtk.main_quit);Gtk.main()
