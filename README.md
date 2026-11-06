@@ -14,7 +14,7 @@ for Arch Linux and Hyprland.
 ## The desktop
 
 - **Menu bar:** dedicated GTK/Cairo bar with a pale frosted surface, dark text, smoothly drawn status icons, matching dropdowns and a Control Center with working sound/brightness sliders. Battery updates follow real charging/adapter states; click it for percentage, power source and charging status. Sound and Bluetooth live in Control Center.
-- **Dock:** auto-hides until you hover at the bottom edge or press `Super + Alt + D`; Finder-style file manager icon, Launchpad, browser, Terminal, Code, Preview-style PDF viewer, settings, Downloads and Trash. Running apps have indicators; clicking focuses or launches them.
+- **Dock:** shows apps open on the current desktop, with running indicators, plus Launchpad and Trash shortcuts. It updates as windows open, close or move between desktops; clicking an app focuses a window on this desktop. Minimized windows remain available in their original desktop’s dock. Auto-hides until you hover at the bottom edge or press `Super + Alt + D`.
 - **Appearance:** WhiteSur Dark GTK 3/4 styling, WhiteSur icons and cursors, Big Sur-style wallpaper, and Inter UI typography.
 - **Windows:** floating by default, rounded corners, shadows and desktop blur.
 - **Tools:** searchable Launchpad-style app grid, clipboard history, screenshots, Wi-Fi, Bluetooth and audio controls.
@@ -65,7 +65,7 @@ Options:
 
 Without `--desktop-only`, the original full workstation installer also installs
 Brave, VS Code, office/creative apps, development tools and example projects.
-The dock opens installed applications; desktop-only users can install their
+Launchpad opens installed applications; desktop-only users can install their
 preferred browser and editor separately.
 
 ## Light and dark appearance

@@ -6,6 +6,7 @@ import math
 import os
 from pathlib import Path
 import signal
+import socket
 import runpy
 import subprocess
 import time
@@ -13,35 +14,67 @@ import time
 gi.require_version('Gtk','3.0')
 gi.require_version('GtkLayerShell','0.1')
 gi.require_version('PangoCairo','1.0')
-from gi.repository import Gtk,Gdk,GLib,GtkLayerShell,Pango,PangoCairo
+from gi.repository import Gtk,Gdk,Gio,GLib,GtkLayerShell,Pango,PangoCairo
 
 HOME=Path.home()
 APPEARANCE=runpy.run_path(str(HOME/".local/bin/macos-appearance"))
 DARK=APPEARANCE["current"]()=="dark"
-APPS=[('Finder','org.kde.dolphin','system-file-manager',['dolphin']),('Launchpad','','view-app-grid',[str(HOME/'.local/bin/macos-launchpad')]),('Brave','brave-browser','brave-browser',[str(HOME/'.local/bin/brave')]),('Terminal','kitty','utilities-terminal',['kitty']),('Visual Studio Code','code','visual-studio-code',[str(HOME/'.local/bin/code')]),('Preview','org.kde.okular','org.kde.okular',['okular']),('System Settings','','preferences-system',[str(HOME/'.local/bin/macos-menu'),'control']),('Downloads','','folder-download',['dolphin',str(HOME/'Downloads')]),('Trash','','user-trash',['dolphin','trash:/'])]
+MODEL=runpy.run_path(str(HOME/'.local/bin/macos-dock-model'))
+KNOWN={'org.kde.dolphin':('Finder','system-file-manager'),
+       'brave-browser':('Brave','brave-browser'),'kitty':('Terminal','utilities-terminal'),
+       'code':('Visual Studio Code','visual-studio-code'),
+       'org.kde.okular':('Preview','org.kde.okular'),
+       'org.pulseaudio.pavucontrol':('Sound','multimedia-volume-control')}
+DESKTOP_APPS={}
+for app in Gio.AppInfo.get_all():
+    keys=[app.get_id(),app.get_executable()]
+    startup_class=getattr(app,'get_startup_wm_class',None)
+    if startup_class:keys.append(startup_class())
+    for key in keys:
+        if key:DESKTOP_APPS.setdefault(key.removesuffix('.desktop').rsplit('/',1)[-1].casefold(),app)
+LAUNCHPAD=('Launchpad','','view-app-grid',[str(HOME/'.local/bin/macos-launchpad')])
+TRASH=('Trash','','user-trash',['dolphin','trash:/'])
+APPS=[LAUNCHPAD,TRASH]
 BASE=52
 SLOT=60
 EDGE=16
 DIVIDER=13
 WIDTH=EDGE*2+SLOT*len(APPS)+DIVIDER
 HEIGHT=112
+SESSION=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
+CACHE=HOME/'.cache/macos-desktop/dock-workspaces.json'
+try:
+    saved=json.loads(CACHE.read_text())
+    origins=saved['origins'] if saved.get('session')==SESSION else {}
+except (OSError,ValueError,KeyError,TypeError):origins={}
+if not isinstance(origins,dict):origins={}
 
 def spawn(args):
     subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 
-def clients():
-    try:return json.loads(subprocess.check_output(['hyprctl','clients','-j'],stderr=subprocess.DEVNULL,timeout=.6))
-    except (subprocess.SubprocessError,ValueError):return []
+def query(command):
+    try:return json.loads(subprocess.check_output(['hyprctl',command,'-j'],stderr=subprocess.DEVNULL,timeout=.6))
+    except (OSError,subprocess.SubprocessError,ValueError):return None
+
+def clients():return query('clients') or []
 
 def activate(index):
+    if not 0<=index<len(APPS):return
     _,classname,_,cmd=APPS[index]
-    found=[w for w in clients() if classname and w['class']==classname]
-    if found:
-        w=found[0];target=json.dumps('address:'+w['address'])
-        if w['workspace']['name'].startswith('special:'):
-            subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace=hl.get_active_workspace().addressable_name,window='+target+',follow=false})'],stdout=subprocess.DEVNULL)
+    if not classname:spawn(cmd);return
+    workspace=query('activeworkspace')
+    if not workspace:return
+    # Re-query at click time: never follow a stale icon to another workspace.
+    groups=MODEL['workspace_apps'](clients(),workspace['id'],origins)
+    active=query('activewindow') or {}
+    window=MODEL['activation_target'](groups.get(classname,[]),active.get('address'))
+    if window:
+        target=json.dumps('address:'+window['address'])
+        if window['workspace']['name']=='special:minimized':
+            subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace='+json.dumps(workspace['name'])+',window='+target+',follow=false})'],stdout=subprocess.DEVNULL)
         subprocess.run(['hyprctl','dispatch','hl.dsp.focus({window='+target+'})'],stdout=subprocess.DEVNULL)
-    else:spawn(cmd)
+        subprocess.run(['hyprctl','dispatch','hl.dsp.window.bring_to_top()'],stdout=subprocess.DEVNULL)
+    refresh()
 
 def rounded(cr,x,y,w,h,r):
     cr.new_sub_path()
@@ -50,12 +83,18 @@ def rounded(cr,x,y,w,h,r):
     cr.close_path()
 
 theme=Gtk.IconTheme.new();theme.set_custom_theme('WhiteSur')
-icons=[]
-for _,_,icon,_ in APPS:
-    try:
-        info=theme.lookup_icon(icon,256,Gtk.IconLookupFlags.FORCE_SVG|Gtk.IconLookupFlags.FORCE_SIZE)
-        icons.append(info.load_icon() if info else None)
-    except GLib.Error:icons.append(None)
+icon_cache={}
+def load_icon(icon):
+    key=icon.to_string() if isinstance(icon,Gio.Icon) else icon
+    if key not in icon_cache:
+        try:
+            flags=Gtk.IconLookupFlags.FORCE_SVG|Gtk.IconLookupFlags.FORCE_SIZE
+            info=theme.lookup_by_gicon(icon,256,flags) if isinstance(icon,Gio.Icon) else theme.lookup_icon(icon,256,flags)
+            if not info:info=theme.lookup_icon('application-x-executable',256,flags)
+            icon_cache[key]=info.load_icon() if info else None
+        except GLib.Error:icon_cache[key]=None
+    return icon_cache[key]
+icons=[load_icon(app[2]) for app in APPS]
 
 window=Gtk.Window();window.set_name('macos-dock');window.set_decorated(False);window.set_resizable(False)
 window.set_app_paintable(True)
@@ -68,7 +107,7 @@ canvas.add_events(Gdk.EventMask.POINTER_MOTION_MASK|Gdk.EventMask.LEAVE_NOTIFY_M
 window.add(canvas)
 state={'pointer':None,'hover':None,'amount':0.,'last':time.monotonic(),'timer':None,'running':set(),'focus':0}
 
-def center(index):return EDGE+SLOT*(index+.5)+(DIVIDER if index>=7 else 0)
+def center(index):return EDGE+SLOT*(index+.5)+(DIVIDER if index==len(APPS)-1 else 0)
 def hit(x,y):
     if y<20:return None
     return next((i for i in range(len(APPS)) if abs(x-center(i))<SLOT/2),None)
@@ -79,11 +118,11 @@ def draw(widget,cr):
     for spread in range(8,0,-1):
         cr.set_source_rgba(0,0,0,.006*(9-spread));rounded(cr,8-spread/2,y+3-spread/2,WIDTH-16+spread,72+spread,20+spread/2);cr.fill()
     rounded(cr,8,y,WIDTH-16,73,20);cr.set_source_rgba(*((.16,.16,.18,.90) if DARK else (.94,.94,.96,.82)));cr.fill_preserve();cr.set_source_rgba(1,1,1,.20 if DARK else .72);cr.set_line_width(1);cr.stroke()
-    cr.set_source_rgba(*((.80,.80,.85,.25) if DARK else (.25,.25,.29,.22)));x=EDGE+7*SLOT+DIVIDER/2;cr.move_to(x,y+13);cr.line_to(x,y+59);cr.set_line_width(.75);cr.stroke()
+    cr.set_source_rgba(*((.80,.80,.85,.25) if DARK else (.25,.25,.29,.22)));x=EDGE+(len(APPS)-1)*SLOT+DIVIDER/2;cr.move_to(x,y+13);cr.line_to(x,y+59);cr.set_line_width(.75);cr.stroke()
     for i,(_,classname,_,_) in enumerate(APPS):
         distance=abs(center(i)-(state['pointer'] if state['pointer'] is not None else -1000))
         influence=max(0,1-distance/105)
-        size=BASE+13*state['amount']*(.5-.5*math.cos(math.pi*influence))
+        size=BASE+min(13,BASE*.25)*state['amount']*(.5-.5*math.cos(math.pi*influence))
         left=center(i)-size/2;top=HEIGHT-19-size
         image=icons[i]
         if image:
@@ -110,7 +149,7 @@ def schedule(*_):
     cancel_hide();state['pointer']=None;state['hover']=None;state['timer']=GLib.timeout_add(650,hide);return False
 
 def reveal(widget=None,event=None):
-    cancel_hide();window.show_all()
+    cancel_hide();refresh();window.show_all()
     if widget is canvas and event is not None:
         state['pointer']=event.x;state['hover']=hit(event.x,event.y);canvas.queue_draw()
     return False
@@ -149,10 +188,80 @@ def frame(widget,clock):
 canvas.add_tick_callback(frame)
 
 def refresh():
-    global DARK
+    global DARK,APPS,icons,WIDTH,SLOT,BASE
     DARK=APPEARANCE['current']()=='dark'
-    state['running']={w['class'] for w in clients()};canvas.queue_draw();return True
+    workspace=query('activeworkspace')
+    windows=query('clients')
+    if workspace is None or windows is None:return True
+    previous=dict(origins)
+    groups=MODEL['workspace_apps'](windows,workspace['id'],origins)
+    if origins!=previous:
+        try:
+            CACHE.parent.mkdir(parents=True,exist_ok=True)
+            temporary=CACHE.with_suffix('.tmp')
+            temporary.write_text(json.dumps({'session':SESSION,'origins':origins}))
+            temporary.replace(CACHE)
+        except OSError:pass
+    apps=[LAUNCHPAD]
+    for classname in groups:
+        desktop=DESKTOP_APPS.get(classname.casefold())
+        if classname in KNOWN:label,icon=KNOWN[classname]
+        elif desktop:label,icon=desktop.get_display_name(),desktop.get_icon() or 'application-x-executable'
+        else:label,icon=classname.rsplit('.',1)[-1],classname
+        apps.append((label,classname,icon,[]))
+    apps.append(TRASH)
+    if [(a[0],a[1]) for a in apps]!=[(a[0],a[1]) for a in APPS]:
+        APPS=apps;icons=[load_icon(a[2]) for a in APPS]
+        monitor=Gdk.Display.get_default().get_monitor(0)
+        maximum=monitor.get_geometry().width-40 if monitor else 1200
+        SLOT=min(60,max(20,(maximum-EDGE*2-DIVIDER)/len(APPS)))
+        BASE=min(52,SLOT-8)
+        WIDTH=int(EDGE*2+SLOT*len(APPS)+DIVIDER)
+        canvas.set_size_request(WIDTH,HEIGHT);window.resize(WIDTH,HEIGHT)
+        state['hover']=None;state['pointer']=None;state['focus']=min(state['focus'],len(APPS)-1)
+    state['running']=set(groups)
+    canvas.queue_draw();return True
+
+# Workspace/open/close/move events update the shelf without waiting for polling.
+event_socket=None
+event_buffer=b''
+pending_refresh=None
+def refresh_event():
+    global pending_refresh
+    pending_refresh=None;refresh();return False
+
+def on_event(channel,condition):
+    global event_socket,event_buffer,pending_refresh
+    if condition & (GLib.IO_HUP|GLib.IO_ERR):
+        event_socket.close();event_socket=None;return False
+    try:
+        data=event_socket.recv(65536)
+        if not data:
+            event_socket.close();event_socket=None;return False
+    except BlockingIOError:return True
+    except OSError:
+        event_socket.close();event_socket=None;return False
+    event_buffer+=data
+    lines=event_buffer.split(b'\n');event_buffer=lines.pop()
+    relevant={b'workspace',b'workspacev2',b'focusedmon',b'openwindow',b'closewindow',
+              b'movewindow',b'movewindowv2',b'monitoradded',b'monitorremoved',b'configreloaded'}
+    if not any(line.partition(b'>>')[0] in relevant for line in lines):return True
+    if pending_refresh is None:pending_refresh=GLib.timeout_add(70,refresh_event)
+    return True
+
+def connect_events():
+    global event_socket,event_buffer
+    if event_socket is None and SESSION:
+        candidate=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
+        try:
+            candidate.connect(str(Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/'hypr'/SESSION/'.socket2.sock'))
+            candidate.setblocking(False);event_socket=candidate;event_buffer=b''
+            GLib.io_add_watch(event_socket,GLib.IO_IN|GLib.IO_HUP|GLib.IO_ERR,on_event)
+        except OSError:candidate.close()
+    return True
+
 GLib.timeout_add_seconds(2,refresh);refresh()
+GLib.timeout_add_seconds(5,connect_events);connect_events()
 
 sensor=Gtk.Window();sensor.set_name('dock-sensor');sensor.set_decorated(False)
 GtkLayerShell.init_for_window(sensor);GtkLayerShell.set_namespace(sensor,'macos-dock-sensor');GtkLayerShell.set_layer(sensor,GtkLayerShell.Layer.TOP)

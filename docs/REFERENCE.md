@@ -33,7 +33,7 @@ GDM or system-wide files. GTK4 CSS/assets are included in the backed-up template
 | --- | --- |
 | `~/.config/hypr/hyprland.lua` | Floating windows, blur, bindings and startup |
 | `~/.local/bin/macos-menubar` | Native GTK/Cairo macOS-style menu bar (Waybar config remains as fallback) |
-| `~/.local/bin/macos-dock` | GTK layer-shell dock with launch/focus actions |
+| `~/.local/bin/macos-dock` | GTK layer-shell dock for current-workspace apps |
 | `~/.local/bin/macos-menu` | Apple/shortcut/window/control menus |
 | `~/.local/bin/macos-app-name` | Active app label for Waybar |
 | `~/.local/bin/arch-start` | Session daemons, native menu bar and dock startup |
@@ -74,7 +74,7 @@ It writes `INSTALL-COMPLETE` only on success. See `install.log` if setup stops.
 
 The top bar's File/Edit/View menus send common application shortcuts. They are
 not a native macOS global app-menu implementation. Some actions vary by app.
-Finder is Dolphin, Preview is Okular, and Launchpad is Wofi; the dock uses familiar
+Finder is Dolphin, Preview is Okular, and Launchpad is the application grid; the dock uses familiar
 icons and names for those roles. Inter substitutes for San Francisco. Native
 window buttons depend on the application toolkit; not every Linux app can display
 identical macOS title bars. Existing windows may need reopening to pick up fonts,
@@ -110,6 +110,10 @@ References: [Apple battery status](https://support.apple.com/en-au/guide/mac-hel
 ## Dock rendering
 
 The dock loads WhiteSur SVG artwork at 256px and draws it at logical size with Cairo, avoiding low-resolution Gtk.Image upscaling on fractional-scale screens. The shelf and shadow are drawn separately; compositor layer blur is disabled for this dock so it cannot soften the icons. Hover magnification eases between 52 and 65 logical pixels and affects nearby icons. Labels appear above icons, with dark running indicators below. Move to the bottom edge to reveal the dock, or use Super+Alt+D. The dock hides after the pointer leaves.
+
+Application icons come from windows on the focused desktop, including applications outside the original launcher list. Launchpad and Trash remain available as utility shortcuts. Windows belonging to the same app share an icon; clicking it focuses a local window, with repeated clicks cycling local windows. Apps on other desktops do not appear or intercept clicks. Hyprland workspace/open/close/move events update the dock immediately; a polling fallback reconnects if the event socket disappears. The shelf grows or shrinks with its app list and reduces icon spacing when needed to fit the display.
+
+Minimized windows remain associated with their last regular desktop and can be restored from that desktop’s dock. The address-to-desktop mapping is cached locally in `~/.cache/macos-desktop/dock-workspaces.json`, scoped to the current compositor session, and closed-window entries are removed.
 
 ## Appearance
 

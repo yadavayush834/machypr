@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+"""Select dock windows from one workspace, preserving minimized-window ownership."""
+
+
+def workspace_apps(windows, workspace_id, origins):
+    live={window['address'] for window in windows}
+    for address in list(origins):
+        if address not in live:del origins[address]
+    for window in windows:
+        workspace=window.get('workspace',{})
+        if not workspace.get('name','').startswith('special:'):
+            origins[window['address']]=workspace.get('id')
+    groups={}
+    for window in windows:
+        workspace=window.get('workspace',{})
+        visible=workspace.get('id')==workspace_id
+        minimized=workspace.get('name')=='special:minimized' and origins.get(window['address'])==workspace_id
+        classname=window.get('class') or window.get('initialClass')
+        if classname and window.get('mapped',True) and (visible or minimized):
+            groups.setdefault(classname,[]).append(window)
+    return groups
+
+
+def activation_target(windows, active_address=None):
+    """Prefer a visible, recently focused window; repeated clicks cycle local windows."""
+    ordered=sorted(windows,key=lambda w:(w.get('workspace',{}).get('name')=='special:minimized',
+                                          w.get('focusHistoryID',9999)))
+    if not ordered:return None
+    if len(ordered)>1 and ordered[0]['address']==active_address:return ordered[1]
+    return ordered[0]
