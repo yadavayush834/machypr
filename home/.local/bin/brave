@@ -1,2 +1,7 @@
 #!/usr/bin/env bash
-exec flatpak run com.brave.Browser "$@"
+set -euo pipefail
+"$HOME/.local/bin/macos-brave-theme"
+appearance=$("$HOME/.local/bin/macos-appearance" status)
+theme=WhiteSur-Light
+[[ $appearance != *'"effective": "dark"'* ]] || theme=WhiteSur-Dark
+exec flatpak run --filesystem=xdg-data/themes:ro --filesystem=xdg-config/gtk-3.0:ro --env="GTK_THEME=$theme" com.brave.Browser --gtk-version=3 "$@"

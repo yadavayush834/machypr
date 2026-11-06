@@ -1,0 +1,32 @@
+#!/usr/bin/env python3
+"""Select Brave's GTK frame theme before startup, without editing a live profile."""
+import datetime
+import json
+from pathlib import Path
+import shutil
+
+
+def configure(home=None):
+    home=Path.home() if home is None else home
+    root=home/'.var/app/com.brave.Browser/config/BraveSoftware/Brave-Browser'
+    # Chromium holds a singleton lock while this profile tree is open.
+    if (root/'SingletonLock').is_symlink() or (root/'SingletonLock').exists():return False
+    for folder in [root/'Default',*sorted(root.glob('Profile *'))]:
+        prefs=folder/'Preferences'
+        if folder.name!='Default' and not prefs.exists():continue
+        try:data=json.loads(prefs.read_text()) if prefs.exists() else {}
+        except (OSError,ValueError):continue
+        theme=data.setdefault('extensions',{}).setdefault('theme',{})
+        browser=data.setdefault('browser',{})
+        if theme.get('system_theme')==1 and browser.get('custom_chrome_frame') is True:continue
+        backup=home/'.local/state/macos-desktop/browser-backups'/(datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'-'+folder.name+'.json')
+        backup.parent.mkdir(parents=True,exist_ok=True)
+        if prefs.exists():shutil.copy2(prefs,backup)
+        theme['system_theme']=1
+        browser['custom_chrome_frame']=True
+        prefs.parent.mkdir(parents=True,exist_ok=True)
+        temporary=prefs.with_name('.Preferences.macos-tmp');temporary.write_text(json.dumps(data,separators=(',',':')));temporary.chmod(0o600);temporary.replace(prefs)
+    return True
+
+
+if __name__=='__main__':configure()

@@ -126,3 +126,7 @@ Menu rows align selection marks and shortcut hints. Up/Down and Home/End navigat
 ## Screenshots
 
 Super+Shift+3 captures the whole desktop, Super+Shift+4 selects a rectangle, and Super+Shift+5 opens screenshot options. Add Ctrl to 3/4 for clipboard-only capture. Print retains area capture. The options menu also offers active-window capture, a five-second delay, and the screenshots folder. Successful captures play the screenshot effect and notify; cancellation saves nothing. Regular captures are saved under Pictures/Screenshots and copied to the clipboard. Window-move bindings for workspaces 3–5 use Super+Alt+Shift+3/4/5 to avoid conflicts.
+
+## Brave window controls
+
+The Brave launcher exposes the local theme directory read-only to Flatpak and selects GTK 3 integration. Before starting a closed browser profile, `macos-brave-theme` backs up Preferences and enables Chromium’s GTK system theme so WhiteSur renders native red/yellow/green controls. It skips profiles while their singleton lock is present, preserves other preferences, and does not change password-storage settings. Browser preference backups remain local under `~/.local/state/macos-desktop/browser-backups`. Brave picks up the selected Light/Dark GTK variant on its next launch; restart it after changing appearance if needed.
