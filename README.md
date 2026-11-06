@@ -91,7 +91,11 @@ Big Sur notification, volume-key and screenshot effects are downloaded locally b
 | Switch desktop / send window to desktop | `Super + 1–9` / `Super + Shift + 1–9` |
 | Toggle floating / keyboard focus | `Super + Shift + Space` / `Super + arrows` |
 | Wallpaper / controls / Wi-Fi | `Super + Alt + W` / `Super + Alt + B` / `Super + Alt + N` |
-| Screenshot / clipboard / lock | `Print` / `Super + V` / `Super + L` |
+| Screenshot screen / area / options | `Super + Shift + 3` / `Super + Shift + 4` / `Super + Shift + 5` |
+| Copy screenshot only | Add `Ctrl` to the screen/area shortcuts |
+| Clipboard history / lock | `Super + V` / `Super + L` |
+
+Screenshot options include active-window capture and a five-second timer. Files save in `~/Pictures/Screenshots` and also copy to the clipboard. `Print` still selects an area; Escape cancels. To move windows to workspaces 3–5, use `Super + Alt + Shift + 3/4/5` (the screenshot shortcuts take priority).
 
 The wallpaper picker preserves the fixed Mac-style system colors.
 

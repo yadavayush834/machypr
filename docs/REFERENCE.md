@@ -122,3 +122,7 @@ The active menu is highlighted. Click it again to close; while a menu is open, m
 Popups use a transparent outside-click surface below the menu. Clicking outside dismisses the popup; its input region excludes the menu bar so toggling and switching remain available. `python scripts/test-popup-desktop.py` runs an optional live-session pointer-dismiss regression check (requires installed desktop helpers).
 
 Menu rows align selection marks and shortcut hints. Up/Down and Home/End navigate the popup; Enter activates the focused item and Escape dismisses it. The network icon now opens a connection-status menu instead of immediately launching a terminal.
+
+## Screenshots
+
+Super+Shift+3 captures the whole desktop, Super+Shift+4 selects a rectangle, and Super+Shift+5 opens screenshot options. Add Ctrl to 3/4 for clipboard-only capture. Print retains area capture. The options menu also offers active-window capture, a five-second delay, and the screenshots folder. Successful captures play the screenshot effect and notify; cancellation saves nothing. Regular captures are saved under Pictures/Screenshots and copied to the clipboard. Window-move bindings for workspaces 3–5 use Super+Alt+Shift+3/4/5 to avoid conflicts.

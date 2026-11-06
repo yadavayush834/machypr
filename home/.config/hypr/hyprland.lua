@@ -46,7 +46,8 @@ for _,d in ipairs({"left","right","up","down"}) do
 end
 for i=1,10 do
  hl.bind("SUPER + "..(i%10),hl.dsp.focus({workspace=i}))
- hl.bind("SUPER + SHIFT + "..(i%10),hl.dsp.window.move({workspace=i}))
+ local move_keys=(i>=3 and i<=5) and "SUPER + ALT + SHIFT + " or "SUPER + SHIFT + "
+ hl.bind(move_keys..(i%10),hl.dsp.window.move({workspace=i}))
 end
 hl.bind("SUPER + mouse:272",hl.dsp.window.drag(),{mouse=true})
 hl.bind("SUPER + mouse:273",hl.dsp.window.resize(),{mouse=true})
@@ -68,3 +69,10 @@ hl.env("GTK_CSD", "1")
 run("SUPER + ALT + D","pkill -USR1 -u $(id -u) -f ^/usr/bin/python.*/macos-dock$")
 
 hl.layer_rule({match={namespace="macos-menubar"},blur=true})
+
+-- macOS screenshot shortcuts; Super is the keyboard logo key.
+run("SUPER + SHIFT + 3",os.getenv("HOME").."/.local/bin/macos-screenshot screen")
+run("SUPER + SHIFT + 4",os.getenv("HOME").."/.local/bin/macos-screenshot region")
+run("SUPER + SHIFT + 5",os.getenv("HOME").."/.local/bin/macos-screenshot menu")
+run("SUPER + CTRL + SHIFT + 3",os.getenv("HOME").."/.local/bin/macos-screenshot screen --clipboard")
+run("SUPER + CTRL + SHIFT + 4",os.getenv("HOME").."/.local/bin/macos-screenshot region --clipboard")

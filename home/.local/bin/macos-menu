@@ -12,13 +12,16 @@ except Exception:active={}
 address=active.get('address','');app=active.get('class','')
 def shortcut(mods,key):
  subprocess.run(['hyprctl','dispatch','hl.dsp.send_shortcut({mods='+json.dumps(mods)+',key='+json.dumps(key)+',window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-def launch(*args):return lambda:run(list(args))
+def launch(*args):
+ if args and args[0]==local('macos-screenshot'):
+  return lambda:run([args[0],*args[1:],'--delay','0.35'] if '--delay' not in args else list(args))
+ return lambda:run(list(args))
 def key(mods,k):return lambda:shortcut(mods,k)
 appearance_module=runpy.run_path(str(home/'.local/bin/macos-appearance'))
 appearance_dark=appearance_module['current']()=='dark'
 status_module=runpy.run_path(str(home/'.local/bin/macos-status'))
 menus={
-'apple': [('About This Desktop',launch('notify-send','Desktop','WhiteSur desktop • macOS styling on Hyprland')),None,('System Settings…',lambda:show_control()),('Appearance…',launch(local('macos-menu'),'appearance')),('App Store…',launch('brave','https://flathub.org')),None,('Sleep',launch('systemctl','suspend')),('Restart…',launch(local('arch-power'))),('Shut Down…',launch(local('arch-power'))),None,('Lock Screen',launch('hyprlock'))],
+'apple': [('About This Desktop',launch('notify-send','Desktop','WhiteSur desktop • macOS styling on Hyprland')),None,('System Settings…',lambda:show_control()),('Appearance…',launch(local('macos-menu'),'appearance')),('Screenshot…',launch(local('macos-menu'),'screenshot')),('App Store…',launch('brave','https://flathub.org')),None,('Sleep',launch('systemctl','suspend')),('Restart…',launch(local('arch-power'))),('Shut Down…',launch(local('arch-power'))),None,('Lock Screen',launch('hyprlock'))],
 'app':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Hide Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace="special:minimized",follow=false,window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL)),None,('Quit',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
 'file':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Open…',key('CTRL','o')),None,('Home',launch('dolphin',str(home))),('Downloads',launch('dolphin',str(home/'Downloads'))),None,('Close Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
 'edit':[('Undo',key('CTRL','z')),('Redo',key('CTRL SHIFT','z')),None,('Cut',key('CTRL','x')),('Copy',key('CTRL SHIFT' if app=='kitty' else 'CTRL','c')),('Paste',key('CTRL SHIFT' if app=='kitty' else 'CTRL','v')),('Select All',key('CTRL','a'))],
@@ -26,9 +29,10 @@ menus={
 'go':[('Home',launch('dolphin',str(home))),('Documents',launch('dolphin',str(home/'Documents'))),('Downloads',launch('dolphin',str(home/'Downloads'))),('Applications',launch('wofi','--show','drun'))],
 'help':[('Keyboard Shortcuts',launch(local('macos-menu'),'shortcuts')),('Desktop Appearance',launch('gnome-theme-switcher'))],
 'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch('gnome-theme-switcher')),('Lock Screen',launch('hyprlock'))],
-'shortcuts':[(label,lambda:None) for label in ['⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Launchpad','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
+'shortcuts':[(label,lambda:None) for label in ['⇧⌘3 — Capture screen','⇧⌘4 — Capture area','⇧⌘5 — Screenshot options','⌃⇧⌘3/4 — Copy screenshot only','⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Launchpad','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
 'appearance':[(('✓ ' if appearance_module['preference']()['mode']==mode else '')+label,launch(local('macos-appearance'),mode)) for mode,label in [('light','Light'),('dark','Dark'),('auto','Auto (Light 7 AM–7 PM)')]],
 'network':[(status_module['network_state']()[1],lambda:None),None,('Wi-Fi Settings…',launch(local('arch-wifi'))),('Bluetooth Settings…',launch(local('arch-bluetooth')))],
+'screenshot':[('Capture Entire Screen',launch(local('macos-screenshot'),'screen')),('Capture Selected Area',launch(local('macos-screenshot'),'region')),('Capture Active Window',launch(local('macos-screenshot'),'window')),None,('Capture Screen in 5 Seconds',launch(local('macos-screenshot'),'screen','--delay','5')),('Open Screenshots Folder',launch('dolphin',str(home/'Pictures/Screenshots')))],
 'sound-effects':[('Play Preview',launch(local('macos-sound'),'notification')),('Enable Sound Effects',launch(local('macos-sound'),'on')),('Disable Sound Effects',launch(local('macos-sound'),'off'))],
 'calendar':[(datetime.datetime.now().strftime('%A, %d %B %Y'),lambda:None)]}
 def show_control():run([local('macos-menu'),'control'])
