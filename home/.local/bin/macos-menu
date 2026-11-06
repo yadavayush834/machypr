@@ -43,6 +43,8 @@ if kind=='window':
   if w['workspace']['name'].startswith('special:'):
    subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace=hl.get_active_workspace().addressable_name,window='+json.dumps('address:'+w['address'])+'})'],stdout=subprocess.DEVNULL)
   subprocess.run(['hyprctl','dispatch','hl.dsp.focus({window='+json.dumps('address:'+w['address'])+'})'],stdout=subprocess.DEVNULL)
+  # Focusing a floating window does not reliably raise it above its siblings.
+  subprocess.run(['hyprctl','dispatch','hl.dsp.window.bring_to_top()'],stdout=subprocess.DEVNULL)
  menus[kind]=[(w['title'][:60],lambda w=w:focus(w)) for w in clients]
 battery = status_module['battery_state']() if kind == 'battery' else None
 win=Gtk.Window();win.set_name('macos-menu');win.set_decorated(False);win.set_resizable(False)
@@ -119,6 +121,7 @@ if kind == 'battery':
  from gi.repository import GLib
  GLib.timeout_add_seconds(2,update_battery)
 menu_buttons=[]
+pending_action=None
 shortcuts={
  ('app','New Window'):'⌘ Return' if app=='kitty' else '⌃N',('file','New Window'):'⌘ Return' if app=='kitty' else '⌃N',
  ('app','Quit'):'⌘W',('file','Close Window'):'⌘W',('file','Open…'):'⌃O',
@@ -136,7 +139,9 @@ for item in ([] if kind in ('battery','control','calendar') else menus.get(kind,
  text=Gtk.Label(label=label);text.set_xalign(0);row.pack_start(text,True,True,0)
  hint=Gtk.Label(label=shortcuts.get((kind,label),''));hint.get_style_context().add_class('shortcut');hint.set_xalign(1);row.pack_end(hint,False,False,0)
  button.add(row)
- def clicked(button,action=action):win.destroy();Gtk.main_quit();action()
+ def clicked(button,action=action):
+  global pending_action
+  pending_action=action;Gtk.main_quit()
  button.connect('clicked',clicked);box.pack_start(button,False,False,0);menu_buttons.append(button)
 provider=Gtk.CssProvider();provider.load_from_data(b'#battery-note {font-size:11px;color:#bdbdc3;} label {font-family:Inter;font-size:13px;color:#f5f5f7;} window {background:rgba(38,38,42,0.98);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),provider,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -184,5 +189,15 @@ dismiss.add_events(Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.TOUCH_MASK)
 def outside_press(*_):
  Gtk.main_quit();return True
 dismiss.connect('button-press-event',outside_press);dismiss.connect('touch-event',outside_press)
-win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit)
+def quit_menu(*_):
+ if Gtk.main_level():Gtk.main_quit()
+ return False
+win.connect('focus-out-event',quit_menu);win.connect('destroy',quit_menu)
 dismiss.show_all();win.show_all();win.set_focus(None);Gtk.main()
+# Unmap both overlay surfaces before an action takes keyboard/window focus.
+# Otherwise their later teardown can restore focus to the previous window.
+GtkLayerShell.set_keyboard_mode(win,GtkLayerShell.KeyboardMode.NONE)
+win.destroy();dismiss.destroy()
+display=Gdk.Display.get_default()
+if display:display.sync()
+if pending_action:pending_action()

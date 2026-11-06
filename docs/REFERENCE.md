@@ -150,3 +150,5 @@ Light and Dark replace all sixteen terminal ANSI colors, including secondary gra
 Appearance changes use `hyprctl reload config-only` because hyprbars caches rendered title text. Updating its background and text settings without rebuilding those textures can leave white text on a light bar. The reload refreshes title textures without reconfiguring monitors.
 
 `Alt + Tab` and `Alt + Shift + Tab` send Ctrl+Tab and Ctrl+Shift+Tab to the focused window for forward/backward tab switching. Kitty maps those shortcuts to terminal tabs. Other applications use their own tab-switching behavior (VS Code uses its recent-editor list); applications without tabs may ignore them. `Super + Tab` opens the desktop window switcher.
+
+Window-switcher row actions run after both the menu and its outside-click overlay have been unmapped and synchronized with the compositor. Selecting a window focuses and raises it above other floating windows; selecting a minimized window restores it first. `python scripts/test-window-menu-desktop.py` optionally checks the live GTK button callbacks using two disposable windows, without changing existing application contents.
