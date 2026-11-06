@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+case "${1:-}" in
+ up) brightnessctl set +5% >/dev/null;;
+ down) brightnessctl --min-value=1 set 5%- >/dev/null;;
+ *) echo 'Usage: macos-brightness up|down' >&2; exit 2;;
+esac
+"$HOME/.local/bin/macos-osd" brightness >/dev/null 2>&1 &

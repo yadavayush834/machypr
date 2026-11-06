@@ -7,15 +7,15 @@ hl.config({
  general={gaps_in=5,gaps_out=10,border_size=1,resize_on_border=true,layout="dwindle",
   col={active_border={colors={"rgba(5ca9dfee)","rgba(3778b7ee)"},angle=45},inactive_border="rgba(293345aa)"}},
  decoration={rounding=12,active_opacity=1.0,inactive_opacity=1.0,
-  shadow={enabled=true,range=22,render_power=3,color=0x55000000},
+  shadow={enabled=true,range=28,render_power=3,color=0x66000000},
   blur={enabled=true,size=5,passes=2,vibrancy=0.16}},
  animations={enabled=true},dwindle={preserve_split=true},
- input={kb_layout="us",follow_mouse=1,touchpad={natural_scroll=true,tap_to_click=true}},
+ input={kb_layout="us",follow_mouse=0,touchpad={natural_scroll=true,tap_to_click=true}},
  misc={disable_hyprland_logo=true,force_default_wallpaper=0}
 })
 pcall(dofile, os.getenv("HOME") .. "/.config/hypr/wallpaper-colors.lua")
 hl.curve("macos", {type="bezier",points={{0.22,1},{0.36,1}}})
-hl.animation({leaf="windows",enabled=true,speed=4,bezier="macos",style="popin 94%"})
+hl.animation({leaf="windows",enabled=true,speed=4,bezier="macos",style="popin 97%"})
 hl.animation({leaf="workspaces",enabled=true,speed=3,bezier="macos",style="slide"})
 hl.animation({leaf="fade",enabled=true,speed=3,bezier="macos"})
 hl.animation({leaf="border",enabled=true,speed=5,bezier="macos"})
@@ -26,7 +26,7 @@ run("SUPER + Q","kitty")
 run("SUPER + E","dolphin")
 run("SUPER + B",os.getenv("HOME").."/.local/bin/brave")
 run("SUPER + C",os.getenv("HOME").."/.local/bin/code")
-run("SUPER + Space",os.getenv("HOME").."/.local/bin/macos-launchpad")
+run("SUPER + Space",os.getenv("HOME").."/.local/bin/macos-spotlight")
 run("SUPER + R",os.getenv("HOME").."/.local/bin/macos-launchpad")
 run("SUPER + L","hyprlock")
 run("SUPER + V",os.getenv("HOME").."/.local/bin/arch-clipboard")
@@ -52,7 +52,7 @@ for i=1,10 do
 end
 hl.bind("SUPER + mouse:272",hl.dsp.window.drag(),{mouse=true})
 hl.bind("SUPER + mouse:273",hl.dsp.window.resize(),{mouse=true})
-for key,cmd in pairs({XF86AudioRaiseVolume=os.getenv("HOME").."/.local/bin/macos-volume up",XF86AudioLowerVolume=os.getenv("HOME").."/.local/bin/macos-volume down",XF86AudioMute=os.getenv("HOME").."/.local/bin/macos-volume mute",XF86MonBrightnessUp="brightnessctl set +5%",XF86MonBrightnessDown="brightnessctl set 5%-",XF86AudioPlay="playerctl play-pause",XF86AudioNext="playerctl next",XF86AudioPrev="playerctl previous"}) do
+for key,cmd in pairs({XF86AudioRaiseVolume=os.getenv("HOME").."/.local/bin/macos-volume up",XF86AudioLowerVolume=os.getenv("HOME").."/.local/bin/macos-volume down",XF86AudioMute=os.getenv("HOME").."/.local/bin/macos-volume mute",XF86MonBrightnessUp=os.getenv("HOME").."/.local/bin/macos-brightness up",XF86MonBrightnessDown=os.getenv("HOME").."/.local/bin/macos-brightness down",XF86AudioPlay="playerctl play-pause",XF86AudioNext="playerctl next",XF86AudioPrev="playerctl previous"}) do
  hl.bind(key,hl.dsp.exec_cmd(cmd),{locked=true,repeating=true})
 end
 hl.gesture({fingers=3,direction="horizontal",action="workspace"})
@@ -62,9 +62,9 @@ hl.window_rule({match={class=".*"},float=true,size={1040,590},center=true})
 hl.layer_rule({match={namespace="waybar"},blur=true})
 hl.layer_rule({match={namespace="macos-dock"},blur=false})
 hl.bind("SUPER + Tab",hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-menu window"))
--- Cycle tabs inside the focused application window.
-hl.bind("ALT + Tab",hl.dsp.send_shortcut({mods="CTRL",key="Tab"}))
-hl.bind("ALT + SHIFT + Tab",hl.dsp.send_shortcut({mods="CTRL SHIFT",key="Tab"}))
+-- Cycle application windows on the current desktop.
+run("ALT + Tab",os.getenv("HOME").."/.local/bin/macos-cycle-window")
+run("ALT + SHIFT + Tab",os.getenv("HOME").."/.local/bin/macos-cycle-window --previous")
 
 -- Request native GTK title bars with WhiteSur traffic-light buttons.
 hl.env("GTK_CSD", "1")
@@ -82,3 +82,10 @@ run("SUPER + CTRL + SHIFT + 3",os.getenv("HOME").."/.local/bin/macos-screenshot 
 run("SUPER + CTRL + SHIFT + 4",os.getenv("HOME").."/.local/bin/macos-screenshot region --clipboard")
 
 pcall(dofile,os.getenv('HOME')..'/.config/hypr/macos-window-bars.lua')
+
+-- Frosted transient surfaces and familiar desktop window actions.
+hl.layer_rule({match={namespace="macos-menu"},blur=true})
+hl.layer_rule({match={namespace="macos-spotlight"},blur=true})
+hl.bind("SUPER + M",hl.dsp.window.move({workspace="special:minimized",follow=false}))
+hl.bind("SUPER + CTRL + F",hl.dsp.window.fullscreen({mode="fullscreen"}))
+hl.layer_rule({match={namespace="macos-osd"},blur=true})

@@ -26,15 +26,23 @@ menus={
 'file':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Open…',key('CTRL','o')),None,('Home',launch('dolphin',str(home))),('Downloads',launch('dolphin',str(home/'Downloads'))),None,('Close Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
 'edit':[('Undo',key('CTRL','z')),('Redo',key('CTRL SHIFT','z')),None,('Cut',key('CTRL','x')),('Copy',key('CTRL SHIFT' if app=='kitty' else 'CTRL','c')),('Paste',key('CTRL SHIFT' if app=='kitty' else 'CTRL','v')),('Select All',key('CTRL','a'))],
 'view':[('Enter Full Screen',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.fullscreen({mode="fullscreen"})'],stdout=subprocess.DEVNULL)),('Zoom In',key('CTRL','plus')),('Zoom Out',key('CTRL','minus')),('Actual Size',key('CTRL','0')),None,('Show Desktop',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.focus({workspace=8})'],stdout=subprocess.DEVNULL))],
-'go':[('Home',launch('dolphin',str(home))),('Documents',launch('dolphin',str(home/'Documents'))),('Downloads',launch('dolphin',str(home/'Downloads'))),('Applications',launch('wofi','--show','drun'))],
-'help':[('Keyboard Shortcuts',launch(local('macos-menu'),'shortcuts')),('Desktop Appearance',launch('gnome-theme-switcher'))],
-'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch('gnome-theme-switcher')),('Lock Screen',launch('hyprlock'))],
-'shortcuts':[(label,lambda:None) for label in ['⇧⌘3 — Capture screen','⇧⌘4 — Capture area','⇧⌘5 — Screenshot options','⌃⇧⌘3/4 — Copy screenshot only','⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Launchpad','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','Alt Tab — Next app tab','Alt Shift Tab — Previous app tab','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
+'go':[('Home',launch('dolphin',str(home))),('Documents',launch('dolphin',str(home/'Documents'))),('Downloads',launch('dolphin',str(home/'Downloads'))),('Applications',launch(local('macos-launchpad')))],
+'help':[('Keyboard Shortcuts',launch(local('macos-menu'),'shortcuts')),('Desktop Appearance',launch(local('macos-menu'),'appearance'))],
+'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch(local('macos-menu'),'appearance')),('Lock Screen',launch('hyprlock'))],
+'shortcuts':[(label,lambda:None) for label in ['⇧⌘3 — Capture screen','⇧⌘4 — Capture area','⇧⌘5 — Screenshot options','⌃⇧⌘3/4 — Copy screenshot only','⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Spotlight','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','Alt Tab — Next window','Alt Shift Tab — Previous window','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
 'appearance':[(('✓ ' if appearance_module['preference']()['mode']==mode else '')+label,launch(local('macos-appearance'),mode)) for mode,label in [('light','Light'),('dark','Dark'),('auto','Auto (Light 7 AM–7 PM)')]],
 'network':[(status_module['network_state']()[1],lambda:None),None,('Wi-Fi Settings…',launch(local('arch-wifi'))),('Bluetooth Settings…',launch(local('arch-bluetooth')))],
 'screenshot':[('Capture Entire Screen',launch(local('macos-screenshot'),'screen')),('Capture Selected Area',launch(local('macos-screenshot'),'region')),('Capture Active Window',launch(local('macos-screenshot'),'window')),None,('Capture Screen in 5 Seconds',launch(local('macos-screenshot'),'screen','--delay','5')),('Open Screenshots Folder',launch('dolphin',str(home/'Pictures/Screenshots')))],
 'sound-effects':[('Play Preview',launch(local('macos-sound'),'notification')),('Enable Sound Effects',launch(local('macos-sound'),'on')),('Disable Sound Effects',launch(local('macos-sound'),'off'))],
 'calendar':[(datetime.datetime.now().strftime('%A, %d %B %Y'),lambda:None)]}
+def new_desktop_folder():
+ folder=home/'Desktop'/'New Folder';number=2
+ while folder.exists():folder=home/'Desktop'/('New Folder '+str(number));number+=1
+ folder.mkdir(parents=True)
+
+# Finder's file menu keeps file actions together; destinations belong in Go.
+if app in ('org.kde.dolphin',''):
+ menus['file']=[('New Finder Window',launch('dolphin',str(home))),('New Folder',key('CTRL SHIFT','n') if app else new_desktop_folder),None,('Open',key('','Return')),None,('Close Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))]
 def show_control():run([local('macos-menu'),'control'])
 if kind=='window':
  try: clients=json.loads(subprocess.check_output(['hyprctl','clients','-j']))
@@ -52,23 +60,25 @@ GtkLayerShell.init_for_window(win);GtkLayerShell.set_namespace(win,'macos-menu')
 GtkLayerShell.set_keyboard_mode(win,GtkLayerShell.KeyboardMode.EXCLUSIVE)
 GtkLayerShell.set_exclusive_zone(win,-1)
 GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.TOP,True)
-GtkLayerShell.set_margin(win,GtkLayerShell.Edge.TOP,25)
+GtkLayerShell.set_margin(win,GtkLayerShell.Edge.TOP,24)
 if os.environ.get('MACOS_MENU_X'):
  GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.LEFT,True)
  screen=Gdk.Display.get_default().get_monitor(0).get_geometry().width
  x=min(int(os.environ['MACOS_MENU_X']),screen-305)
  GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,max(6,x))
-elif kind in ('battery','control','calendar'):
+elif kind in ('battery','control','calendar','network'):
  GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.RIGHT,True)
- GtkLayerShell.set_margin(win,GtkLayerShell.Edge.RIGHT, {'battery':160,'control':70,'calendar':8}[kind])
+ GtkLayerShell.set_margin(win,GtkLayerShell.Edge.RIGHT, {'battery':160,'control':70,'calendar':8,'network':120}[kind])
 else:
  GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.LEFT,True)
  GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,{'apple':8,'app':40,'file':125,'edit':170,'view':215,'go':260,'window':300,'help':365}.get(kind,8))
-box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=1);box.set_border_width(5);win.add(box)
+box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=0);box.set_border_width(5);win.add(box)
+if kind in ('apple','app','file','edit','view','go','window','help'):
+ win.get_style_context().add_class('application-menu')
 if kind == 'control':
  panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);panel.set_border_width(8);panel.set_size_request(270,-1)
  grid=Gtk.Grid();grid.set_row_spacing(7);grid.set_column_spacing(7)
- for index,(title,icon,command) in enumerate([('Wi-Fi','network-wireless-symbolic',[local('arch-wifi')]),('Bluetooth','bluetooth-symbolic',[local('arch-bluetooth')]),('Sound','audio-volume-high-symbolic',['pavucontrol']),('Lock Screen','system-lock-screen-symbolic',['hyprlock'])]):
+ for index,(title,icon,command) in enumerate([('Wi-Fi','network-wireless-symbolic',[local('macos-menu'),'network']),('Bluetooth','bluetooth-symbolic',[local('arch-bluetooth')]),('Sound','audio-volume-high-symbolic',['pavucontrol']),('Lock Screen','system-lock-screen-symbolic',['hyprlock'])]):
   tile=Gtk.Button();tile.get_style_context().add_class('control-tile')
   inside=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8);image=Gtk.Image.new_from_icon_name(icon,Gtk.IconSize.BUTTON);inside.pack_start(image,False,False,0);inside.pack_start(Gtk.Label(label=title),False,False,0);tile.add(inside)
   tile.connect('clicked',lambda _,command=command:(Gtk.main_quit(),run(command)))
@@ -123,13 +133,74 @@ if kind == 'battery':
 menu_buttons=[]
 pending_action=None
 shortcuts={
+ ('file','New Finder Window'):'⌘N',('file','New Folder'):'⇧⌘N',('file','Open'):'⌘O',('go','Home'):'⇧⌘H',('go','Downloads'):'⌥⌘L',
  ('app','New Window'):'⌘ Return' if app=='kitty' else '⌃N',('file','New Window'):'⌘ Return' if app=='kitty' else '⌃N',
  ('app','Quit'):'⌘W',('file','Close Window'):'⌘W',('file','Open…'):'⌃O',
  ('edit','Undo'):'⌃Z',('edit','Redo'):'⇧⌃Z',('edit','Cut'):'⌃X',
  ('edit','Copy'):'⇧⌃C' if app=='kitty' else '⌃C',('edit','Paste'):'⇧⌃V' if app=='kitty' else '⌃V',('edit','Select All'):'⌃A',
  ('view','Zoom In'):'⌃+',('view','Zoom Out'):'⌃−',('view','Actual Size'):'⌃0',('apple','Lock Screen'):'⌘L'}
-for item in ([] if kind in ('battery','control','calendar') else menus.get(kind,menus['apple'])):
- if item is None:box.pack_start(Gtk.Separator(),False,False,4);continue
+if kind == 'network':
+ from gi.repository import GLib
+ import threading
+ panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=5)
+ panel.set_border_width(6);panel.set_size_request(290,-1)
+ heading=Gtk.Label();heading.set_markup('<b>Wi-Fi</b>');heading.set_xalign(0)
+ panel.pack_start(heading,False,False,4)
+ connection=Gtk.Label(label=status_module['network_state']()[1]);connection.set_xalign(0)
+ panel.pack_start(connection,False,False,0)
+ note=Gtk.Label(label='Looking for nearby networks…');note.set_xalign(0)
+ panel.pack_start(note,False,False,3)
+ scroller=Gtk.ScrolledWindow();scroller.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC)
+ scroller.set_max_content_height(330);scroller.set_propagate_natural_height(True)
+ network_rows=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=2);scroller.add(network_rows)
+ panel.pack_start(scroller,True,True,0)
+ refresh=Gtk.Button(label='Refresh Networks');panel.pack_start(refresh,False,False,0)
+ settings=Gtk.Button(label='Wi-Fi Settings…')
+ settings.connect('clicked',lambda _:(Gtk.main_quit(),run([local('arch-wifi')])))
+ panel.pack_start(settings,False,False,0);box.pack_start(panel,True,True,0)
+ alive=[True];win.connect('destroy',lambda *_:alive.__setitem__(0,False))
+ def connect_network(button,network):
+  global pending_action
+  # iwctl's own agent handles saved credentials and secure password entry.
+  pending_action=lambda:run(['kitty','--title','Connect to '+network['name'],'iwctl','station',network['device'],'connect',network['name']])
+  Gtk.main_quit()
+ def render_networks(result,error=None):
+  if not alive[0]:return False
+  refresh.set_sensitive(True)
+  for child in network_rows.get_children():network_rows.remove(child)
+  menu_buttons.clear()
+  note.set_text(error or result['message'])
+  for network in result.get('networks',[]):
+   button=Gtk.Button();button.get_style_context().add_class('menu-row')
+   row=Gtk.Box(spacing=8)
+   icon=Gtk.Image.new_from_icon_name('network-wireless-signal-'+('excellent' if network['signal']>=75 else 'good' if network['signal']>=50 else 'ok' if network['signal']>=25 else 'weak')+'-symbolic',Gtk.IconSize.MENU)
+   row.pack_start(icon,False,False,0)
+   label=Gtk.Label(label=network['name'],xalign=0);label.set_ellipsize(3);label.set_max_width_chars(23)
+   row.pack_start(label,True,True,0)
+   if network['connected']:row.pack_end(Gtk.Image.new_from_icon_name('object-select-symbolic',Gtk.IconSize.MENU),False,False,0)
+   if network['secure']:row.pack_end(Gtk.Image.new_from_icon_name('changes-prevent-symbolic',Gtk.IconSize.MENU),False,False,0)
+   button.add(row);button.get_accessible().set_name(network['name'])
+   button.connect('clicked',connect_network,network);network_rows.pack_start(button,False,False,0);menu_buttons.append(button)
+  network_rows.show_all();return False
+ def scan(*_,rescan=False):
+  refresh.set_sensitive(False)
+  def work():
+   try:
+    model=runpy.run_path(local('macos-wifi-model'));result=model['networks'](rescan)
+    GLib.idle_add(render_networks,result)
+   except Exception:
+    GLib.idle_add(render_networks,{'networks':[]},'Wi-Fi unavailable. Open Wi-Fi Settings to check the service.')
+  threading.Thread(target=work,daemon=True).start()
+ refresh.connect('clicked',lambda *_:scan(rescan=True))
+ scan(rescan=True)
+ # iwd scans asynchronously; refresh the displayed results while the menu is open.
+ def periodic():
+  if not alive[0]:return False
+  scan();return True
+ GLib.timeout_add_seconds(5,periodic)
+
+for item in ([] if kind in ('battery','control','calendar','network') else menus.get(kind,menus['apple'])):
+ if item is None:box.pack_start(Gtk.Separator(),False,False,2);continue
  label,action=item
  checked=label.startswith('✓ ')
  if checked:label=label[2:]
@@ -143,9 +214,9 @@ for item in ([] if kind in ('battery','control','calendar') else menus.get(kind,
   global pending_action
   pending_action=action;Gtk.main_quit()
  button.connect('clicked',clicked);box.pack_start(button,False,False,0);menu_buttons.append(button)
-provider=Gtk.CssProvider();provider.load_from_data(b'#battery-note {font-size:11px;color:#bdbdc3;} label {font-family:Inter;font-size:13px;color:#f5f5f7;} window {background:rgba(38,38,42,0.98);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
+provider=Gtk.CssProvider();provider.load_from_data(b'#battery-note {font-size:11px;color:#bdbdc3;} label {font-family:Inter;font-size:13px;color:#f5f5f7;} window {background:rgba(38,38,42,0.96);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),provider,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-light=Gtk.CssProvider();light.load_from_data(b'window {background:rgba(241,241,245,0.97);border:1px solid rgba(45,45,55,0.25);border-radius:7px;color:#202024;} label,button {color:#202024;font-family:Inter;font-size:13px;} button {min-width:220px;padding:3px 9px;} button:hover,button:focus {background:#0969da;color:white;} button:hover label,button:focus label {color:white;} #battery-note {color:#66666d;font-size:11px;} .control-tile {min-width:110px;min-height:37px;background:rgba(255,255,255,0.55);border-radius:8px;padding:7px;} .control-tile label {font-size:12px;} .control-tile:focus {background:rgba(255,255,255,0.55);color:#202024;} .control-tile:focus label {color:#202024;} scale trough {min-height:14px;background:#d1d1d8;border-radius:7px;} scale highlight {background:#ffffff;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:white;border:1px solid #b8b8bd;border-radius:50%;} separator {background:rgba(40,40,50,0.16);}')
+light=Gtk.CssProvider();light.load_from_data(b'window {background:rgba(246,246,248,0.96);border:1px solid rgba(45,45,55,0.25);border-radius:7px;color:#202024;} label,button {color:#202024;font-family:Inter;font-size:13px;} button {min-width:220px;padding:3px 9px;} button:hover,button:focus {background:#0969da;color:white;} button:hover label,button:focus label {color:white;} #battery-note {color:#66666d;font-size:11px;} .control-tile {min-width:110px;min-height:37px;background:rgba(255,255,255,0.55);border-radius:8px;padding:7px;} .control-tile label {font-size:12px;} .control-tile:focus {background:rgba(255,255,255,0.55);color:#202024;} .control-tile:focus label {color:#202024;} scale trough {min-height:14px;background:#d1d1d8;border-radius:7px;} scale highlight {background:#ffffff;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:white;border:1px solid #b8b8bd;border-radius:50%;} separator {background:rgba(40,40,50,0.16);}')
 if not appearance_dark:Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),light,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
 else:
  dark=Gtk.CssProvider();dark.load_from_data(b'.control-tile {min-width:110px;min-height:37px;background:#38383d;border-radius:8px;padding:7px;} .control-tile label {color:#f5f5f7;font-size:12px;} scale trough {min-height:14px;background:#55555c;border-radius:7px;} scale highlight {background:#f5f5f7;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:#fafafa;border-radius:50%;}')
@@ -159,6 +230,8 @@ def menu_key(widget,event):
  return False
 rows_css=Gtk.CssProvider();rows_css.load_from_data(b'button.menu-row {min-width:250px;padding:4px 6px;border-radius:4px;} button.menu-row label {font-family:Inter;font-size:13px;} button.menu-row .shortcut {font-size:12px;opacity:0.70;} button.menu-row:hover label,button.menu-row:focus label {color:white;}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),rows_css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+2)
+application_css=Gtk.CssProvider();application_css.load_from_data(b'window.application-menu {border-radius:7px;border:1px solid rgba(128,128,135,.4);} window.application-menu button.menu-row {min-width:212px;min-height:18px;padding:2px 7px;border-radius:4px;} window.application-menu button.menu-row label {font-size:13px;font-weight:400;} window.application-menu button.menu-row .shortcut {font-size:13px;opacity:.65;} window.application-menu separator {min-height:1px;margin:1px 7px;background:rgba(128,128,135,.30);} window.application-menu button:hover,window.application-menu button:focus {background:#1479e8;}')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),application_css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+3)
 win.connect('key-press-event',menu_key)
 def fit_popup(widget,allocation):
  if os.environ.get('MACOS_MENU_X'):
@@ -192,7 +265,9 @@ dismiss.connect('button-press-event',outside_press);dismiss.connect('touch-event
 def quit_menu(*_):
  if Gtk.main_level():Gtk.main_quit()
  return False
-win.connect('focus-out-event',quit_menu);win.connect('destroy',quit_menu)
+# Outside clicks and Escape dismiss explicitly; transient layer focus changes
+# during mapping must not close the menu before it can be used.
+win.connect('destroy',quit_menu)
 dismiss.show_all();win.show_all();win.set_focus(None);Gtk.main()
 # Unmap both overlay surfaces before an action takes keyboard/window focus.
 # Otherwise their later teardown can restore focus to the previous window.

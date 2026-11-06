@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""Read iwd's structured network list without changing the active connection."""
+import gi
+from gi.repository import Gio, GLib
+
+def call(bus,path,interface,method,args=None):
+    return bus.call_sync('net.connman.iwd',path,interface,method,args,None,Gio.DBusCallFlags.NONE,6000,None).unpack()
+
+def networks(rescan=False):
+    bus=Gio.bus_get_sync(Gio.BusType.SYSTEM,None)
+    objects=call(bus,'/','org.freedesktop.DBus.ObjectManager','GetManagedObjects')[0]
+    stations=[(p,v) for p,v in objects.items() if 'net.connman.iwd.Station' in v]
+    if not stations:return {'networks':[],'message':'No wireless adapter detected'}
+    rows=[]
+    for path,interfaces in stations:
+        device=interfaces.get('net.connman.iwd.Device',{})
+        if not device.get('Powered',False):continue
+        if rescan:
+            try:call(bus,path,'net.connman.iwd.Station','Scan')
+            except GLib.Error:pass # An existing scan may already be in progress.
+        ordered=call(bus,path,'net.connman.iwd.Station','GetOrderedNetworks')[0]
+        for network,signal in ordered:
+            props=objects.get(network,{}).get('net.connman.iwd.Network',{})
+            if not props.get('Name'):continue
+            rows.append({'name':props['Name'],'connected':props.get('Connected',False),
+                         'secure':props.get('Type')!='open','signal':max(0,min(100,2*(signal/100+100))),
+                         'device':device.get('Name',''),'path':network})
+    rows.sort(key=lambda n:(not n['connected'],-n['signal'],n['name'].casefold()))
+    unique={}
+    for row in rows:unique.setdefault(row['name'],row)
+    return {'networks':list(unique.values()),'message':'No networks found' if not rows else 'Nearby Networks'}

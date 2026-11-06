@@ -71,7 +71,7 @@ The bootstrap downloads this repository into a temporary directory and runs its 
 | **Control Center** | Brightness and sound sliders, Wi-Fi, Bluetooth, screen lock, appearance and sound-effect controls |
 | **Launchpad** | Searchable grid of installed applications |
 | **Screenshots** | `Super + S` selects an area and copies it to the clipboard without saving a file |
-| **Window and tab switching** | Clickable window-name menu; `Alt + Tab` switches tabs inside the focused application |
+| **Window and tab switching** | Clickable window-name menu; `Alt + Tab` cycles windows on the current desktop |
 | **Sound effects** | Notification, volume-key and screenshot feedback, with preview and enable/disable controls |
 
 ## Gallery
@@ -110,7 +110,7 @@ Apps appear when opened and disappear when closed or moved to another desktop. C
 
 ![MacHypr Launchpad with a search field and installed-application grid](assets/machypr-launchpad.png)
 
-Search and launch your installed applications with `Super + Space`. The grid reflects what is installed on your machine; the desktop-only installer does not add the optional workstation applications.
+Search and launch your installed applications with `Super + R`. The grid reflects what is installed on your machine; the desktop-only installer does not add the optional workstation applications.
 
 ### Calendar and screenshots
 
@@ -130,11 +130,13 @@ Click the clock for the calendar. Use `Super + S` for an area capture directly t
 
 | Action | Shortcut |
 | --- | --- |
-| Launchpad | `Super + Space` |
+| Spotlight application search | `Super + Space` |
+| Launchpad | `Super + R` |
+| Minimize / full screen | `Super + M` / `Super + Ctrl + F` |
 | Terminal / file manager | `Super + Return` / `Super + E` |
 | Browser / VS Code, when installed | `Super + B` / `Super + C` |
 | Window switcher / close window | `Super + Tab` / `Super + W` |
-| Next / previous app tab | `Alt + Tab` / `Alt + Shift + Tab` |
+| Next / previous window on this desktop | `Alt + Tab` / `Alt + Shift + Tab` |
 | Area screenshot → clipboard only | `Super + S` |
 | Screen / area / screenshot options | `Super + Shift + 3` / `4` / `5` |
 | Clipboard-only screen / area | Add `Ctrl` to the screen/area screenshot shortcuts |
@@ -145,7 +147,7 @@ Click the clock for the calendar. Use `Super + S` for an area capture directly t
 | Control Center / wallpaper | `Super + Alt + B` / `Super + Alt + W` |
 | Lock screen | `Super + L` |
 
-Tab switching follows each app’s Ctrl+Tab behavior; Kitty is configured for terminal tabs. Screenshot shortcuts other than the clipboard-only variants save to `~/Pictures/Screenshots` and copy to the clipboard. Escape cancels region selection.
+Screenshot shortcuts other than the clipboard-only variants save to `~/Pictures/Screenshots` and copy to the clipboard. Escape cancels region selection.
 
 ## Restore and maintain
 
@@ -176,3 +178,32 @@ Checks cover portable apply/restore, backups, appearance contrast, battery state
 Built around [Hyprland](https://github.com/hyprwm/Hyprland), [WhiteSur](https://github.com/vinceliuice/WhiteSur-gtk-theme), GTK, Cairo and the official [hyprbars](https://github.com/hyprwm/hyprland-plugins/tree/main/hyprbars) plugin. Inter substitutes for San Francisco. The menu bar sends common app shortcuts rather than exporting native macOS menus.
 
 Original configuration and helpers are [MIT licensed](LICENSE). Upstream assets keep their own licenses; see [third-party credits](docs/THIRD-PARTY.md). Sound samples are downloaded locally rather than bundled. MacHypr is an independent Linux desktop configuration, unaffiliated with Apple, Arch Linux or Hyprland.
+
+### Desktop refinements
+
+The menu bar uses cached status artwork and asynchronous active-window queries.
+Spotlight searches installed applications with arrow-key selection, Return to open,
+and Escape or an outside click to close. The dock eases its reveal and magnification
+and stops frame callbacks when idle; it respects GTK's reduced-animation setting.
+Volume and brightness keys show a short, non-focusing HUD alongside existing sound feedback.
+Windows use click-to-focus, with Super+M to minimize and Super+Ctrl+F for full screen.
+This remains a Big Sur-inspired Linux desktop: Spotlight currently searches apps,
+and application menus remain shortcut adapters rather than native exported menus.
+
+### Wi-Fi and desktop files
+
+The Wi-Fi dropdown lists nearby iwd networks with signal strength, security,
+and connected status, including while Ethernet is active. It refreshes in the
+background. Select a network to connect using iwctl's password prompt;
+Wi-Fi Settings retains the full iwd setup interface.
+
+Desktop icons show the contents of `~/Desktop` and update when files change.
+Double-click an icon or select it and press Return to open it. The first run
+adds shortcuts for installed Finder, Browser, Terminal and Code apps, plus
+Documents, Downloads and Projects folder links. Right-click for New Folder
+or Open Desktop Folder. Shortcuts are seeded once, so removing them sticks.
+
+Desktop icons can be dragged freely across the wallpaper. Coordinates are saved
+in `~/.local/state/macos-desktop/icon-positions.json` and restored on login.
+Charging below 100% uses a green pulsing battery; full, discharging and
+plugged-but-not-charging batteries use the static normal indicator.

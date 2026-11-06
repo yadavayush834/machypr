@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""Freely positioned desktop files with persistent, unsnapped coordinates."""
+import fcntl
+import json
+import os
+from pathlib import Path
+import subprocess
+import gi
+gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
+from gi.repository import Gtk,Gdk,Gio,GLib,Pango,GtkLayerShell as Layer
+home=Path.home()
+lock=open(Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/'macos-desktop-icons.lock','w')
+try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+except BlockingIOError:raise SystemExit(0)
+desktop=Path(GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DESKTOP) or home/'Desktop')
+desktop.mkdir(parents=True,exist_ok=True)
+layout_file=home/'.local/state/macos-desktop/icon-positions.json'
+try:
+ positions=json.loads(layout_file.read_text())
+ if not isinstance(positions,dict):positions={}
+except (OSError,ValueError):positions={}
+win=Gtk.Window(name='desktop-icons');win.set_decorated(False)
+Layer.init_for_window(win);Layer.set_namespace(win,'macos-desktop-icons');Layer.set_layer(win,Layer.Layer.BOTTOM)
+Layer.set_keyboard_mode(win,Layer.KeyboardMode.ON_DEMAND);Layer.set_exclusive_zone(win,-1)
+for edge in (Layer.Edge.TOP,Layer.Edge.BOTTOM,Layer.Edge.RIGHT,Layer.Edge.LEFT):Layer.set_anchor(win,edge,True)
+Layer.set_margin(win,Layer.Edge.TOP,30);Layer.set_margin(win,Layer.Edge.BOTTOM,8)
+canvas=Gtk.Fixed();win.add(canvas)
+theme=Gtk.IconTheme.new();theme.set_custom_theme('WhiteSur')
+items={};selected=None;drag=None;pending=None
+ITEM_W,ITEM_H=100,104
+
+def bounds():
+ return max(1,canvas.get_allocated_width()),max(1,canvas.get_allocated_height())
+
+def clamp(x,y):
+ w,h=bounds();return max(0,min(round(x),max(0,w-ITEM_W))),max(0,min(round(y),max(0,h-ITEM_H)))
+
+def save_positions():
+ layout_file.parent.mkdir(parents=True,exist_ok=True)
+ temporary=layout_file.with_suffix('.tmp');temporary.write_text(json.dumps(positions,indent=2)+'\n');temporary.replace(layout_file)
+
+def move_item(name,x,y):
+ x,y=clamp(x,y);positions[name]=[x,y];canvas.move(items[name],x,y)
+ return x,y
+
+def select(name):
+ global selected
+ if selected in items:items[selected].get_style_context().remove_class('selected')
+ selected=name
+ if name in items:items[name].get_style_context().add_class('selected');items[name].grab_focus()
+
+def open_item(name):
+ filename=str(desktop/name)
+ try:
+  if filename.endswith('.desktop'):
+   app=Gio.DesktopAppInfo.new_from_filename(filename)
+   if app:app.launch([],Gdk.Display.get_default().get_app_launch_context())
+  else:Gio.AppInfo.launch_default_for_uri(Path(filename).as_uri(),Gdk.Display.get_default().get_app_launch_context())
+ except GLib.Error:subprocess.Popen(['notify-send','Desktop','Could not open '+name])
+
+def press(widget,event,name):
+ global drag
+ if event.button!=1:return False
+ select(name)
+ if event.type==Gdk.EventType.DOUBLE_BUTTON_PRESS:
+  drag=None;open_item(name);return True
+ drag={'name':name,'pointer':(event.x_root,event.y_root),'origin':positions[name][:],'moved':False}
+ return True
+
+def motion(widget,event):
+ if drag is None or not event.state&Gdk.ModifierType.BUTTON1_MASK:return False
+ dx=event.x_root-drag['pointer'][0];dy=event.y_root-drag['pointer'][1]
+ if abs(dx)+abs(dy)>4:drag['moved']=True
+ if drag['moved']:move_item(drag['name'],drag['origin'][0]+dx,drag['origin'][1]+dy)
+ return True
+
+def release(widget,event):
+ global drag
+ if event.button!=1 or drag is None:return False
+ if drag['moved']:save_positions()
+ drag=None;return True
+
+def key(widget,event,name):
+ if event.keyval in (Gdk.KEY_Return,Gdk.KEY_KP_Enter):open_item(name);return True
+ if event.keyval==Gdk.KEY_Escape:select(None);return True
+ return False
+
+def load_icon(image):
+ try:
+  info=theme.lookup_by_gicon(image,64,Gtk.IconLookupFlags.FORCE_SIZE) if isinstance(image,Gio.Icon) else theme.lookup_icon(image,64,Gtk.IconLookupFlags.FORCE_SIZE)
+  if not info:info=theme.lookup_icon('text-x-generic',64,0)
+  return info.load_icon() if info else None
+ except GLib.Error:return None
+
+def refresh(*_):
+ global selected
+ if drag is not None:return True
+ for widget in items.values():canvas.remove(widget)
+ items.clear()
+ w,h=bounds();rows=max(1,(h-16)//116);occupied=[]
+ for name,point in positions.items():
+  if (desktop/name).exists() and isinstance(point,list) and len(point)==2 and all(isinstance(n,(int,float)) for n in point):occupied.append(clamp(*point))
+ for path in sorted(desktop.iterdir(),key=lambda p:(not p.is_dir(),p.name.casefold())):
+  if path.name.startswith('.'):continue
+  name=path.name;label=name;image='folder' if path.is_dir() else 'text-x-generic'
+  if path.suffix=='.desktop':
+   app=Gio.DesktopAppInfo.new_from_filename(str(path))
+   if app:label=app.get_display_name();image=app.get_icon() or image
+  else:
+   try:image=Gio.File.new_for_path(str(path)).query_info('standard::icon',Gio.FileQueryInfoFlags.NONE,None).get_icon()
+   except GLib.Error:pass
+  tile=Gtk.EventBox();tile.set_visible_window(False);tile.set_can_focus(True);tile.set_size_request(ITEM_W,ITEM_H)
+  tile.get_style_context().add_class('desktop-item');tile.get_accessible().set_name(label)
+  content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=5);content.set_halign(Gtk.Align.CENTER);tile.add(content)
+  art=Gtk.Image.new_from_pixbuf(load_icon(image));content.pack_start(art,False,False,0)
+  caption=Gtk.Label(label=label);caption.set_max_width_chars(13);caption.set_ellipsize(Pango.EllipsizeMode.END)
+  caption.set_justify(Gtk.Justification.CENTER);content.pack_start(caption,False,False,0);tile.set_tooltip_text(label)
+  tile.add_events(Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.BUTTON_RELEASE_MASK|Gdk.EventMask.POINTER_MOTION_MASK)
+  tile.connect('button-press-event',press,name);tile.connect('motion-notify-event',motion);tile.connect('button-release-event',release);tile.connect('key-press-event',key,name)
+  point=positions.get(name)
+  if not (isinstance(point,list) and len(point)==2 and all(isinstance(n,(int,float)) for n in point)):
+   for i in range(max(1,len(items)+len(occupied)+1)):
+    point=clamp(w-ITEM_W-12-(i//rows)*112,8+(i%rows)*116)
+    if all(abs(point[0]-x)>=ITEM_W or abs(point[1]-y)>=ITEM_H for x,y in occupied):break
+   occupied.append(point)
+  x,y=clamp(*point);positions[name]=[x,y];items[name]=tile;canvas.put(tile,x,y)
+  if selected==name:tile.get_style_context().add_class('selected')
+ canvas.show_all();return False
+
+monitor=Gio.File.new_for_path(str(desktop)).monitor_directory(Gio.FileMonitorFlags.NONE,None)
+def changed(*_):
+ global pending
+ if pending:GLib.source_remove(pending)
+ def update():
+  global pending
+  pending=None
+  if drag is not None:pending=GLib.timeout_add(150,update);return False
+  return refresh()
+ pending=GLib.timeout_add(120,update)
+monitor.connect('changed',changed)
+
+def context(_,event):
+ if event.button!=3:return False
+ menu=Gtk.Menu()
+ def new_folder(*_):
+  target=desktop/'New Folder';i=2
+  while target.exists():target=desktop/('New Folder '+str(i));i+=1
+  positions[target.name]=list(clamp(event.x,event.y));target.mkdir();save_positions()
+ for label,action in [('Open Desktop Folder',lambda *_:subprocess.Popen(['dolphin',str(desktop)])),('New Folder',new_folder),('Refresh',refresh)]:
+  item=Gtk.MenuItem(label=label);item.connect('activate',action);menu.append(item)
+ menu.show_all();menu.popup_at_pointer(event);return True
+win.add_events(Gdk.EventMask.BUTTON_PRESS_MASK);win.connect('button-press-event',context)
+last_size=None
+def resized(widget,allocation):
+ global last_size
+ size=(allocation.width,allocation.height)
+ if size==last_size or size[0]<100:return
+ last_size=size;GLib.idle_add(refresh)
+canvas.connect('size-allocate',resized)
+css=Gtk.CssProvider();css.load_from_data(b'''
+window#desktop-icons {background:transparent;border:none;box-shadow:none;}
+#desktop-icons .desktop-item {background:transparent;border-radius:6px;padding:0;}
+#desktop-icons label {color:white;font-family:Inter;font-size:12px;text-shadow:0 1px 3px rgba(0,0,0,.95);}
+#desktop-icons .selected label {background:#1264c4;border-radius:3px;}
+#desktop-icons .selected image {background:rgba(255,255,255,.18);border-radius:6px;}
+''')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+10)
+win.show_all();win.connect('destroy',Gtk.main_quit);Gtk.main()

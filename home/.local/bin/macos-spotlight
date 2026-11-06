@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""Keyboard-first application search, using installed desktop entries."""
+import fcntl
+import os
+from pathlib import Path
+import runpy
+import gi
+
+gi.require_version('Gtk', '3.0')
+gi.require_version('GtkLayerShell', '0.1')
+from gi.repository import Gtk, Gdk, Gio, GtkLayerShell as Layer
+
+home = Path.home()
+lock = open(Path(os.environ.get('XDG_RUNTIME_DIR', '/tmp')) / 'macos-spotlight.lock', 'w')
+try:
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    raise SystemExit(0)
+appearance = runpy.run_path(str(home / '.local/bin/macos-appearance'))
+dark = appearance['current']() == 'dark'
+apps = sorted((a for a in Gio.AppInfo.get_all() if a.should_show()), key=lambda a: a.get_display_name().casefold())
+win = Gtk.Window(name='spotlight')
+win.set_decorated(False)
+win.set_resizable(False)
+Layer.init_for_window(win)
+Layer.set_namespace(win, 'macos-spotlight')
+Layer.set_layer(win, Layer.Layer.OVERLAY)
+Layer.set_keyboard_mode(win, Layer.KeyboardMode.EXCLUSIVE)
+Layer.set_exclusive_zone(win, -1)
+Layer.set_anchor(win, Layer.Edge.TOP, True)
+monitor = Gdk.Display.get_default().get_monitor(0)
+width = monitor.get_geometry().width if monitor else 1280
+height = monitor.get_geometry().height if monitor else 720
+Layer.set_margin(win, Layer.Edge.TOP, max(55, int(height * .21)))
+box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+box.set_size_request(min(640, width - 40), -1)
+win.add(box)
+entry = Gtk.SearchEntry()
+entry.set_placeholder_text('Spotlight Search')
+entry.get_accessible().set_name('Spotlight Search')
+box.pack_start(entry, False, False, 0)
+results = Gtk.ListBox()
+results.set_selection_mode(Gtk.SelectionMode.SINGLE)
+box.pack_start(results, False, False, 0)
+message = Gtk.Label(label='Search applications')
+message.set_name('search-hint')
+message.set_margin_top(10)
+message.set_margin_bottom(10)
+box.pack_start(message, False, False, 0)
+
+def search(*_):
+    query = entry.get_text().strip().casefold()
+    for child in results.get_children():
+        results.remove(child)
+    if not query:
+        message.set_text('Search applications')
+        message.show()
+        return
+    matches = []
+    for app in apps:
+        name = app.get_display_name().casefold()
+        keywords = ' '.join(app.get_keywords() or []) if hasattr(app, 'get_keywords') else ''
+        if query in ' '.join((name, app.get_description() or '', keywords)).casefold():
+            matches.append((0 if name.startswith(query) else 1, name, app))
+    matches.sort(key=lambda item: item[:2])
+    for _, _, app in matches[:7]:
+        row = Gtk.ListBoxRow()
+        row.application = app
+        content = Gtk.Box(spacing=12)
+        image = Gtk.Image.new_from_gicon(app.get_icon(), Gtk.IconSize.DIALOG) if app.get_icon() else Gtk.Image.new_from_icon_name('application-x-executable', Gtk.IconSize.DIALOG)
+        image.set_pixel_size(32)
+        content.pack_start(image, False, False, 0)
+        label = Gtk.Label(label=app.get_display_name(), xalign=0)
+        content.pack_start(label, True, True, 0)
+        row.add(content)
+        results.add(row)
+    results.show_all()
+    rows = results.get_children()
+    message.set_text('No applications found' if not rows else '↑ ↓ to select    Return to open    Esc to close')
+    message.show()
+    if rows:
+        results.select_row(rows[0])
+
+pending_app=None
+
+def activate(_, row):
+    global pending_app
+    if row is None:
+        return
+    pending_app=row.application
+    Gtk.main_quit()
+
+from gi.repository import GLib
+
+def key(_, event):
+    if event.keyval == Gdk.KEY_Escape:
+        Gtk.main_quit()
+        return True
+    rows = results.get_children()
+    if event.keyval in (Gdk.KEY_Up, Gdk.KEY_Down) and rows:
+        selected = results.get_selected_row()
+        index = rows.index(selected) if selected in rows else 0
+        results.select_row(rows[max(0, min(len(rows)-1, index + (1 if event.keyval == Gdk.KEY_Down else -1)))])
+        return True
+    if event.keyval == Gdk.KEY_Return:
+        activate(results, results.get_selected_row())
+        return True
+    return False
+
+entry.connect('search-changed', search)
+results.connect('row-activated', activate)
+win.connect('key-press-event', key)
+win.connect('destroy', Gtk.main_quit)
+win.connect('focus-out-event', lambda *_: (Gtk.main_quit(), False)[1])
+bg, fg, line = ('rgba(35,35,39,.94)', '#f5f5f7', 'rgba(255,255,255,.16)') if dark else ('rgba(246,246,248,.94)', '#202024', 'rgba(0,0,0,.12)')
+css = Gtk.CssProvider()
+css.load_from_data(f'''
+window#spotlight {{background:{bg}; color:{fg}; border:1px solid {line}; border-radius:12px;}}
+#spotlight entry {{font-family:Inter; font-size:24px; color:{fg}; caret-color:{fg}; background:transparent; border:0; box-shadow:none; padding:17px 20px;}}
+#spotlight entry image {{color:{fg};}}
+#spotlight list {{background:transparent; padding:0 8px;}}
+#spotlight row {{padding:8px 12px; border-radius:6px; color:{fg};}}
+#spotlight row:selected {{background:#0a70df; color:white;}}
+#spotlight label {{font-family:Inter; font-size:14px; color:inherit;}}
+#spotlight #search-hint {{font-size:11px; color:{fg}; opacity:.75;}}
+'''.encode())
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 10)
+# The transparent sibling receives outside clicks without focusing another app.
+dismiss=Gtk.Window(name='spotlight-dismiss')
+dismiss.set_decorated(False)
+Layer.init_for_window(dismiss)
+Layer.set_namespace(dismiss,'macos-spotlight-dismiss')
+Layer.set_layer(dismiss,Layer.Layer.OVERLAY)
+Layer.set_keyboard_mode(dismiss,Layer.KeyboardMode.NONE)
+Layer.set_exclusive_zone(dismiss,-1)
+for edge in (Layer.Edge.TOP,Layer.Edge.BOTTOM,Layer.Edge.LEFT,Layer.Edge.RIGHT):
+    Layer.set_anchor(dismiss,edge,True)
+transparent=Gtk.CssProvider()
+transparent.load_from_data(b'window {background:transparent;border:none;box-shadow:none;}')
+dismiss.get_style_context().add_provider(transparent,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+20)
+dismiss.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+dismiss.connect('button-press-event',lambda *_:(Gtk.main_quit(),True)[1])
+dismiss.show_all()
+win.show_all()
+entry.grab_focus()
+Gtk.main()
+Layer.set_keyboard_mode(win,Layer.KeyboardMode.NONE)
+win.disconnect_by_func(Gtk.main_quit)
+win.destroy();dismiss.destroy()
+Gdk.Display.get_default().sync()
+if pending_app:
+    try:pending_app.launch([],Gdk.Display.get_default().get_app_launch_context())
+    except GLib.Error:
+        import subprocess
+        subprocess.Popen(['notify-send','Spotlight','Could not open this application'])

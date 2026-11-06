@@ -9,3 +9,5 @@ esac
 if [[ $(wpctl get-volume @DEFAULT_AUDIO_SINK@) != *MUTED* ]]; then
  "$HOME/.local/bin/macos-sound" volume
 fi
+
+"$HOME/.local/bin/macos-osd" volume >/dev/null 2>&1 &

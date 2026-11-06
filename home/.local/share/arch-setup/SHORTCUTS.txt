@@ -4,7 +4,10 @@ Super is the keyboard logo key (shown as Command in the menu).
 
 Super+Return: Terminal
 Super+E: Finder-style file manager
-Super+Space: Launchpad application grid
+Super+Space: Spotlight application search
+Super+R: Launchpad application grid
+Super+M: Minimize window
+Super+Ctrl+F: Toggle full screen
 Super+Tab: Window switcher
 Super+W: Close window
 Super+L: Lock

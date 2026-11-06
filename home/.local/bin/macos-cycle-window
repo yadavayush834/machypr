@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Cycle normal windows on the current desktop without changing workspaces."""
+import json
+import subprocess
+import sys
+
+
+def query(name):
+    return json.loads(subprocess.check_output(['hyprctl', name, '-j'], timeout=1))
+
+
+def target_window(windows, workspace, active, backwards=False):
+    eligible = [window for window in windows
+                if window.get('mapped', True) and not window.get('hidden', False)
+                and (window.get('workspace', {}).get('id') == workspace or window.get('pinned', False))
+                and not window.get('workspace', {}).get('name', '').startswith('special:')]
+    # Stable compositor ordering lets repeated presses traverse every window.
+    if not eligible:
+        return None
+    addresses = sorted(window['address'] for window in eligible)
+    if active not in addresses:
+        return addresses[-1 if backwards else 0]
+    return addresses[(addresses.index(active) + (-1 if backwards else 1)) % len(addresses)]
+
+
+def main():
+    try:
+        workspace = query('activeworkspace')['id']
+        active = query('activewindow').get('address')
+        target = target_window(query('clients'), workspace, active, '--previous' in sys.argv)
+        if target is None or target == active:
+            return
+        result = subprocess.run(['hyprctl', 'dispatch', 'hl.dsp.focus({window=' + json.dumps('address:' + target) + '})'], capture_output=True, text=True, timeout=1)
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError):
+        return
+
+
+if __name__ == '__main__':
+    main()

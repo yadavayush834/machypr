@@ -105,7 +105,7 @@ GtkLayerShell.set_anchor(window,GtkLayerShell.Edge.BOTTOM,True);GtkLayerShell.se
 canvas=Gtk.DrawingArea();canvas.set_size_request(WIDTH,HEIGHT);canvas.set_can_focus(True);canvas.set_has_tooltip(False);canvas.get_accessible().set_name('Application Dock')
 canvas.add_events(Gdk.EventMask.POINTER_MOTION_MASK|Gdk.EventMask.LEAVE_NOTIFY_MASK|Gdk.EventMask.ENTER_NOTIFY_MASK|Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.KEY_PRESS_MASK)
 window.add(canvas)
-state={'pointer':None,'hover':None,'amount':0.,'last':time.monotonic(),'timer':None,'running':set(),'focus':0}
+state={'pointer':None,'hover':None,'amount':0.,'last':time.monotonic(),'timer':None,'running':set(),'focus':0,'tick':None,'reveal':0.,'visible_target':0.,'smooth_pointer':None}
 
 def center(index):return EDGE+SLOT*(index+.5)+(DIVIDER if index==len(APPS)-1 else 0)
 def hit(x,y):
@@ -113,6 +113,7 @@ def hit(x,y):
     return next((i for i in range(len(APPS)) if abs(x-center(i))<SLOT/2),None)
 
 def draw(widget,cr):
+    cr.translate(0,(1-state['reveal'])*HEIGHT)
     # Only the shelf is frosted; the icon artwork remains completely opaque.
     y=HEIGHT-79
     for spread in range(8,0,-1):
@@ -120,7 +121,7 @@ def draw(widget,cr):
     rounded(cr,8,y,WIDTH-16,73,20);cr.set_source_rgba(*((.16,.16,.18,.90) if DARK else (.94,.94,.96,.82)));cr.fill_preserve();cr.set_source_rgba(1,1,1,.20 if DARK else .72);cr.set_line_width(1);cr.stroke()
     cr.set_source_rgba(*((.80,.80,.85,.25) if DARK else (.25,.25,.29,.22)));x=EDGE+(len(APPS)-1)*SLOT+DIVIDER/2;cr.move_to(x,y+13);cr.line_to(x,y+59);cr.set_line_width(.75);cr.stroke()
     for i,(_,classname,_,_) in enumerate(APPS):
-        distance=abs(center(i)-(state['pointer'] if state['pointer'] is not None else -1000))
+        distance=abs(center(i)-(state['smooth_pointer'] if state['smooth_pointer'] is not None else -1000))
         influence=max(0,1-distance/105)
         size=BASE+min(13,BASE*.25)*state['amount']*(.5-.5*math.cos(math.pi*influence))
         left=center(i)-size/2;top=HEIGHT-19-size
@@ -143,19 +144,19 @@ def cancel_hide():
     if state['timer'] is not None:GLib.source_remove(state['timer']);state['timer']=None
 
 def hide():
-    state['timer']=None;window.hide();state['pointer']=None;state['hover']=None;return False
+    state['timer']=None;state['visible_target']=0.;state['pointer']=None;state['hover']=None;animate();return False
 
 def schedule(*_):
-    cancel_hide();state['pointer']=None;state['hover']=None;state['timer']=GLib.timeout_add(650,hide);return False
+    cancel_hide();state['pointer']=None;state['hover']=None;animate();state['timer']=GLib.timeout_add(650,hide);return False
 
 def reveal(widget=None,event=None):
-    cancel_hide();refresh();window.show_all()
+    cancel_hide();refresh();window.show_all();state['visible_target']=1.;animate()
     if widget is canvas and event is not None:
         state['pointer']=event.x;state['hover']=hit(event.x,event.y);canvas.queue_draw()
     return False
 
 def motion(widget,event):
-    cancel_hide();state['pointer']=event.x;state['hover']=hit(event.x,event.y);widget.queue_draw();return False
+    cancel_hide();state['pointer']=event.x;state['hover']=hit(event.x,event.y);animate();widget.queue_draw();return False
 canvas.connect('motion-notify-event',motion)
 canvas.connect('enter-notify-event',reveal);canvas.connect('leave-notify-event',schedule)
 
@@ -178,14 +179,28 @@ def key(widget,event):
     return False
 canvas.connect('key-press-event',key)
 
+def animate():
+    if state['tick'] is None:
+        state['last']=time.monotonic()
+        state['tick']=canvas.add_tick_callback(frame)
+
 def frame(widget,clock):
     now=time.monotonic();dt=min(.1,now-state['last']);state['last']=now
+    factor=1-math.exp(-22*dt) if Gtk.Settings.get_default().get_property('gtk-enable-animations') else 1
     target=1. if state['pointer'] is not None else 0.
-    previous=state['amount'];state['amount']+=(target-previous)*min(1,dt*16)
-    if abs(target-state['amount'])<.001:state['amount']=target
-    if previous!=state['amount']:canvas.queue_draw()
-    return True
-canvas.add_tick_callback(frame)
+    state['amount']+=(target-state['amount'])*factor
+    state['reveal']+=(state['visible_target']-state['reveal'])*factor
+    pointer=state['pointer']
+    if pointer is not None:
+        if state['smooth_pointer'] is None:state['smooth_pointer']=pointer
+        state['smooth_pointer']+=(pointer-state['smooth_pointer'])*factor
+    settled=abs(target-state['amount'])<.002 and abs(state['visible_target']-state['reveal'])<.002
+    if pointer is not None:settled=settled and abs(pointer-state['smooth_pointer'])<.1
+    if settled:
+        state['amount']=target;state['reveal']=state['visible_target'];state['tick']=None
+        if not state['reveal']:window.hide()
+    canvas.queue_draw()
+    return not settled
 
 def refresh():
     global DARK,APPS,icons,WIDTH,SLOT,BASE

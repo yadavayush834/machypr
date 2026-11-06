@@ -21,3 +21,9 @@ fi
 if ! pgrep -u "$UID" -f "^/usr/bin/python @HOME@/.local/bin/macos-dock$" >/dev/null; then
  /usr/bin/python "$HOME/.local/bin/macos-dock" >/dev/null 2>&1 &
 fi
+
+# Keep desktop files below application windows on every workspace.
+"$HOME/.local/bin/macos-desktop-setup"
+if ! pgrep -u "$UID" -f "^/usr/bin/python .*macos-desktop-icons$" >/dev/null; then
+ /usr/bin/python "$HOME/.local/bin/macos-desktop-icons" >/dev/null 2>&1 &
+fi
