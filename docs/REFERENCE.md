@@ -138,3 +138,9 @@ The Brave launcher exposes the local theme directory read-only to Flatpak and se
 The installer builds the BSD-licensed official source against installed Hyprland headers, preserving Hyprland's ABI check. Binaries are local and not committed. `scripts/install-window-controls.sh` pins source for Hyprland 0.57.x; rebuild after a compositor upgrade and log in again. A future major/minor version requires a matching source revision. Config-only installation assumes this plugin has already been built. If the binary is absent or incompatible, the configuration continues without the extra bars.
 
 VS Code uses `window.titleBarStyle: native` to avoid duplicate controls. Qt Wayland client decorations are disabled for new processes; existing applications may need reopening. Brave is excluded from the compositor bar because its GTK tab strip already contains the WhiteSur controls. Applications that deliberately draw their own controls may still require their native-title-bar setting.
+
+## Appearance contrast
+
+Light and Dark replace all sixteen terminal ANSI colors, including secondary gray text, rather than changing the background alone. Kitty uses an opaque background, undimmed text and `text_fg_override_threshold 4.5 ratio` to keep application-supplied truecolor text readable against both light and dark cells. This also protects an already-running terminal application that retains its original colors. Applications can still draw their own input-panel backgrounds. Qt palettes include normal, secondary, link and status text for windows, views, buttons, tooltips and selections; applications that cache their palette may need reopening.
+
+Appearance changes use `hyprctl reload config-only` because hyprbars caches rendered title text. Updating its background and text settings without rebuilding those textures can leave white text on a light bar. The reload refreshes title textures without reconfiguring monitors.

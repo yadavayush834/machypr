@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Persistent Light/Dark/Auto appearance shared by desktop surfaces."""
 import argparse
+import configparser
 import datetime
+import io
 import json
 from pathlib import Path
 import re
@@ -58,7 +60,15 @@ def apply(mode, home=None, session=True):
         temporary.symlink_to(source.name)
         temporary.replace(p)
     kitty=home/'.config/kitty/wallpaper-colors.conf'
-    write(kitty,f'background {bg}\nforeground {fg}\nselection_background #0969da\nselection_foreground #ffffff\ncursor {fg}\ncolor0 {bg}\ncolor7 {fg}\ncolor8 {border}\ncolor15 {fg}\nurl_color '+('#64b5ff' if dark else '#005fbd')+'\n')
+    # Replace the complete ANSI palette: dark pastels disappear on white.
+    palette = (
+        ['#242428','#ff6961','#6cce75','#ffd36c','#64b5ff','#dca4ef','#6ad5d5','#e5e5e5',
+         '#aaaaaf','#ff8a84','#91df98','#ffe094','#98ceff','#e8bff7','#99e7e7','#ffffff'] if dark else
+        ['#202024','#a51d2d','#186b32','#805500','#0759ac','#803d99','#08656b','#404046',
+         '#5c5c64','#b32030','#196c36','#805000','#085db3','#84429b','#09676e','#202024'])
+    write(kitty,f'background {bg}\nforeground {fg}\nselection_background #0969da\nselection_foreground #ffffff\ncursor {fg}\ncursor_text_color {bg}\nbackground_opacity 1\ndim_opacity 1\ntext_fg_override_threshold 4.5 ratio\n' +
+          ''.join(f'color{i} {value}\n' for i,value in enumerate(palette)) +
+          'url_color '+('#64b5ff' if dark else '#005fbd')+'\n')
     wofi=home/'.config/wofi/style.css'
     if wofi.exists():
         text=wofi.read_text().split('/* appearance override */')[0]
@@ -72,13 +82,28 @@ def apply(mode, home=None, session=True):
         write(dunst,text)
     kde=home/'.config/kdeglobals'
     if kde.exists():
-        text=kde.read_text()
+        settings=configparser.ConfigParser(interpolation=None,strict=False)
+        settings.optionxform=str
+        settings.read(kde)
         rgb=lambda value: ','.join(str(int(value[i:i+2],16)) for i in (1,3,5))
-        text=re.sub(r'(?m)^BackgroundNormal=.*$', 'BackgroundNormal='+rgb(surface),text)
-        text=re.sub(r'(?m)^ForegroundNormal=.*$', 'ForegroundNormal='+rgb(fg),text)
-        text=re.sub(r'(\[Colors:Selection\]\n)BackgroundNormal=.*\nForegroundNormal=.*',r'\g<1>BackgroundNormal=10,132,255\nForegroundNormal=255,255,255',text)
-        text=text.replace('ColorScheme=WhiteSurDark','ColorScheme=WhiteSurLight') if not dark else text.replace('ColorScheme=WhiteSurLight','ColorScheme=WhiteSurDark')
-        write(kde,text)
+        for role in ('Window','View','Button','Tooltip','Selection'):
+            section='Colors:'+role
+            if not settings.has_section(section):settings.add_section(section)
+            selected=role=='Selection'
+            background='#0969da' if selected else bg if role=='View' else surface
+            foreground='#ffffff' if selected else fg
+            values={'BackgroundNormal':background,'BackgroundAlternate':background if selected else surface,
+                    'ForegroundNormal':foreground,'ForegroundInactive':foreground if selected else '#aaaab2' if dark else '#5c5c64',
+                    'ForegroundActive':foreground,'ForegroundLink':foreground if selected else palette[4],
+                    'ForegroundVisited':foreground if selected else palette[5],
+                    'ForegroundNegative':foreground if selected else palette[1],
+                    'ForegroundNeutral':foreground if selected else palette[3],
+                    'ForegroundPositive':foreground if selected else palette[2]}
+            for key,value in values.items():settings[section][key]=rgb(value)
+        if not settings.has_section('General'):settings.add_section('General')
+        settings['General']['ColorScheme']='WhiteSurDark' if dark else 'WhiteSurLight'
+        output=io.StringIO();settings.write(output,space_around_delimiters=False)
+        write(kde,output.getvalue())
     code=home/'.config/Code/User/settings.json'
     if code.exists():
         try:
@@ -96,10 +121,9 @@ def apply(mode, home=None, session=True):
         command('gsettings','set','org.gnome.desktop.interface','color-scheme','prefer-dark' if dark else 'prefer-light')
         command('pkill','-USR1','-u',str(__import__('os').getuid()),'-x','kitty')
         command('dunstctl','reload')
-        command('hyprctl','repl',
-                'if hl.plugin.hyprbars then hl.config({plugin={hyprbars={'
-                'bar_color="rgb(' + surface[1:] + ')",col={text="rgb(' + fg[1:] + ')"}'
-                '}}}) end')
+        # hyprbars caches rendered title textures. A config-only reload rebuilds
+        # those textures as well as updating the background, without monitor reloads.
+        command('hyprctl','reload','config-only')
     return effective
 
 
