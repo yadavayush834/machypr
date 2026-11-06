@@ -4,7 +4,7 @@ Super is the keyboard logo key (shown as Command in the menu).
 
 Super+Return: Terminal
 Super+E: Finder-style file manager
-Super+Space: Spotlight launcher
+Super+Space: Launchpad application grid
 Super+Tab: Window switcher
 Super+W: Close window
 Super+L: Lock
@@ -13,6 +13,7 @@ Print: Screenshot
 Super+Alt+W: Wallpaper
 Super+Alt+B: Control menu
 Super+Alt+N: Wi-Fi
+Super+Alt+D: Show or hide dock
 Super+1-9: Switch desktop
 Super+Shift+1-9: Move window to desktop
 Super+left drag: Move window

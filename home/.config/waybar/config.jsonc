@@ -1,7 +1,7 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 25,
+  "height": 24,
   "spacing": 0,
   "exclusive": true,
   "modules-left": [
@@ -15,12 +15,10 @@
   ],
   "modules-center": [],
   "modules-right": [
-    "bluetooth",
-    "network",
-    "pulseaudio",
-    "battery",
-    "custom/search",
-    "custom/control",
+    "image#battery",
+    "image#network",
+    "image#search",
+    "image#control",
     "clock"
   ],
   "custom/apple": {
@@ -39,50 +37,6 @@
     "format": "{:%a %d %b  %H:%M}",
     "tooltip-format": "{:%A, %d %B %Y}",
     "on-click": "@HOME@/.local/bin/macos-menu calendar"
-  },
-  "network": {
-    "format-wifi": "\uf1eb",
-    "format-ethernet": "\uf1eb",
-    "format-disconnected": "\udb82\udd2d",
-    "tooltip-format": "{essid}",
-    "on-click": "@HOME@/.local/bin/arch-wifi"
-  },
-  "bluetooth": {
-    "format": "\uf293",
-    "format-disabled": "",
-    "format-off": "",
-    "format-connected": "\uf293",
-    "on-click": "@HOME@/.local/bin/arch-bluetooth"
-  },
-  "pulseaudio": {
-    "format": "\uf028",
-    "format-muted": "\uf6a9",
-    "on-click": "pavucontrol"
-  },
-  "battery": {
-    "format": "{capacity}% {icon}",
-    "format-charging": "{capacity}% \uf240",
-    "format-icons": [
-      "\uf244",
-      "\uf243",
-      "\uf242",
-      "\uf241",
-      "\uf240"
-    ],
-    "states": {
-      "warning": 20,
-      "critical": 10
-    }
-  },
-  "custom/search": {
-    "format": "\uf002",
-    "tooltip": false,
-    "on-click": "wofi --show drun"
-  },
-  "custom/control": {
-    "format": "\uf1de",
-    "tooltip": false,
-    "on-click": "@HOME@/.local/bin/macos-menu control"
   },
   "custom/file": {
     "format": "File",
@@ -108,5 +62,29 @@
     "format": "Help",
     "tooltip": false,
     "on-click": "@HOME@/.local/bin/macos-menu help"
+  },
+  "image#battery": {
+    "size": 25,
+    "on-click": "@HOME@/.local/bin/macos-menu battery",
+    "exec": "@HOME@/.local/bin/macos-status battery",
+    "interval": 2
+  },
+  "image#network": {
+    "size": 19,
+    "on-click": "@HOME@/.local/bin/arch-wifi",
+    "exec": "@HOME@/.local/bin/macos-status network",
+    "interval": 5
+  },
+  "image#search": {
+    "size": 16,
+    "on-click": "wofi --show drun",
+    "path": "@HOME@/.local/share/macos-desktop/icons/spotlight.svg",
+    "tooltip": false
+  },
+  "image#control": {
+    "size": 17,
+    "on-click": "@HOME@/.local/bin/macos-menu control",
+    "path": "@HOME@/.local/share/macos-desktop/icons/control-center.svg",
+    "tooltip": false
   }
 }

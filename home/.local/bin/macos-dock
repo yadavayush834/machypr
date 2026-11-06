@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import gi,json,subprocess,os
+import gi,json,subprocess,os,signal
 from pathlib import Path
 gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
 from gi.repository import Gtk,Gdk,GLib,GtkLayerShell
@@ -8,9 +8,9 @@ def spawn(args):subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subproces
 def clients():
  try:return json.loads(subprocess.check_output(['hyprctl','clients','-j'],stderr=subprocess.DEVNULL))
  except Exception:return []
-apps=[('Finder','org.kde.dolphin','system-file-manager',['dolphin']),('Launchpad','','view-app-grid',['wofi','--show','drun']),('Brave','brave-browser','brave-browser',[str(h/'.local/bin/brave')]),('Terminal','kitty','utilities-terminal',['kitty']),('Visual Studio Code','code','visual-studio-code',[str(h/'.local/bin/code')]),('Preview','org.kde.okular','org.kde.okular',['okular']),('System Settings','','preferences-system',[str(h/'.local/bin/macos-menu'),'control'])]
+apps=[('Finder','org.kde.dolphin','system-file-manager',['dolphin']),('Launchpad','','view-app-grid',[str(h/'.local/bin/macos-launchpad')]),('Brave','brave-browser','brave-browser',[str(h/'.local/bin/brave')]),('Terminal','kitty','utilities-terminal',['kitty']),('Visual Studio Code','code','visual-studio-code',[str(h/'.local/bin/code')]),('Preview','org.kde.okular','org.kde.okular',['okular']),('System Settings','','preferences-system',[str(h/'.local/bin/macos-menu'),'control'])]
 window=Gtk.Window();window.set_name('macos-dock');window.set_decorated(False);window.set_resizable(False)
-GtkLayerShell.init_for_window(window);GtkLayerShell.set_namespace(window,'macos-dock');GtkLayerShell.set_layer(window,GtkLayerShell.Layer.TOP);GtkLayerShell.set_anchor(window,GtkLayerShell.Edge.BOTTOM,True);GtkLayerShell.set_margin(window,GtkLayerShell.Edge.BOTTOM,9);GtkLayerShell.set_exclusive_zone(window,84)
+GtkLayerShell.init_for_window(window);GtkLayerShell.set_namespace(window,'macos-dock');GtkLayerShell.set_layer(window,GtkLayerShell.Layer.TOP);GtkLayerShell.set_anchor(window,GtkLayerShell.Edge.BOTTOM,True);GtkLayerShell.set_margin(window,GtkLayerShell.Edge.BOTTOM,9);GtkLayerShell.set_exclusive_zone(window,0)
 box=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=3);box.set_border_width(7);window.add(box)
 theme=Gtk.IconTheme.new();theme.set_custom_theme('WhiteSur')
 indicators=[]
@@ -39,4 +39,35 @@ def refresh():
  running={w['class'] for w in clients()}
  for classname,dot in indicators:dot.set_text('•' if classname in running else ' ')
  return True
-GLib.timeout_add_seconds(2,refresh);refresh();window.show_all();window.connect('destroy',Gtk.main_quit);Gtk.main()
+# A narrow edge sensor reveals the dock without reserving desktop space.
+sensor=Gtk.Window();sensor.set_name('dock-sensor');sensor.set_decorated(False)
+GtkLayerShell.init_for_window(sensor);GtkLayerShell.set_namespace(sensor,'macos-dock-sensor');GtkLayerShell.set_layer(sensor,GtkLayerShell.Layer.TOP)
+for edge in (GtkLayerShell.Edge.BOTTOM,GtkLayerShell.Edge.LEFT,GtkLayerShell.Edge.RIGHT):GtkLayerShell.set_anchor(sensor,edge,True)
+GtkLayerShell.set_exclusive_zone(sensor,0);sensor.set_size_request(-1,2)
+sensor.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK)
+window.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+state={'timer':None}
+def cancel_hide():
+ if state['timer'] is not None:
+  GLib.source_remove(state['timer']);state['timer']=None
+def hide_later():
+ state['timer']=None
+ window.hide();return False
+def schedule(_widget=None,event=None):
+ if event is not None and event.detail == Gdk.NotifyType.INFERIOR:return False
+ cancel_hide();state['timer']=GLib.timeout_add(800,hide_later);return False
+def reveal(*_):
+ cancel_hide();window.show_all();return False
+def toggle(*_):
+ if window.get_visible():window.hide()
+ else:
+  reveal();state['timer']=GLib.timeout_add(4000,hide_later)
+ return False
+sensor.connect('enter-notify-event',reveal)
+sensor.connect('leave-notify-event',schedule)
+window.connect('enter-notify-event',lambda *_:(cancel_hide() or False))
+window.connect('leave-notify-event',schedule)
+signal.signal(signal.SIGUSR1,lambda *_:GLib.idle_add(toggle))
+css2=Gtk.CssProvider();css2.load_from_data(b'window#dock-sensor {background:transparent;border:0;}')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css2,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+GLib.timeout_add_seconds(2,refresh);refresh();window.show_all();window.hide();sensor.show_all();window.connect('destroy',Gtk.main_quit);Gtk.main()

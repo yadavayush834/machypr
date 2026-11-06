@@ -9456,3 +9456,12 @@ tabthumbnail picture {
 @define-color content_view_bg @view_bg_color;
 /* Very contrasty background for text views (@theme_text_color foreground) */
 @define-color text_view_bg @view_bg_color;
+
+/* BEGIN macOS traffic lights */
+headerbar windowcontrols button.close, headerbar windowcontrols button.close:backdrop { background-image: none; background-color: #ff5f57; border: 0; border-radius: 100%; box-shadow: none; min-width: 12px; min-height: 12px; margin: 0 3px; padding: 0; }
+headerbar windowcontrols button.close image { opacity: 0; } headerbar windowcontrols button.close:hover image { opacity: 1; color: #302a27; }
+headerbar windowcontrols button.minimize, headerbar windowcontrols button.minimize:backdrop { background-image: none; background-color: #febc2e; border: 0; border-radius: 100%; box-shadow: none; min-width: 12px; min-height: 12px; margin: 0 3px; padding: 0; }
+headerbar windowcontrols button.minimize image { opacity: 0; } headerbar windowcontrols button.minimize:hover image { opacity: 1; color: #302a27; }
+headerbar windowcontrols button.maximize, headerbar windowcontrols button.maximize:backdrop { background-image: none; background-color: #28c840; border: 0; border-radius: 100%; box-shadow: none; min-width: 12px; min-height: 12px; margin: 0 3px; padding: 0; }
+headerbar windowcontrols button.maximize image { opacity: 0; } headerbar windowcontrols button.maximize:hover image { opacity: 1; color: #302a27; }
+/* END macOS traffic lights */

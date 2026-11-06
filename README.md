@@ -14,10 +14,10 @@ for Arch Linux and Hyprland.
 ## The desktop
 
 - **Menu bar:** Apple menu, active application name, shortcut menus, compact status icons and right-aligned date.
-- **Dock:** Finder-style file manager icon, Launchpad, browser, Terminal, Code, Preview-style PDF viewer, settings, Downloads and Trash. Running apps have indicators; clicking focuses or launches them.
+- **Dock:** auto-hides until you hover at the bottom edge or press `Super + Alt + D`; Finder-style file manager icon, Launchpad, browser, Terminal, Code, Preview-style PDF viewer, settings, Downloads and Trash. Running apps have indicators; clicking focuses or launches them.
 - **Appearance:** WhiteSur Dark GTK 3/4 styling, WhiteSur icons and cursors, Big Sur-style wallpaper, and Inter UI typography.
 - **Windows:** floating by default, rounded corners, shadows and desktop blur.
-- **Tools:** Spotlight-style launcher, clipboard history, screenshots, Wi-Fi, Bluetooth and audio controls.
+- **Tools:** searchable Launchpad-style app grid, clipboard history, screenshots, Wi-Fi, Bluetooth and audio controls.
 
 This is a desktop configuration for **Arch Linux**, not a bootable OS image or
 native macOS. Inter substitutes for Apple's San Francisco. The menu bar supplies
@@ -70,7 +70,8 @@ preferred browser and editor separately.
 
 | Action | Keys |
 | --- | --- |
-| Spotlight / Terminal / Finder-style file manager | `Super + Space` / `Super + Return` / `Super + E` |
+| Launchpad / Terminal / Finder-style file manager | `Super + Space` / `Super + Return` / `Super + E` |
+| Toggle dock | `Super + Alt + D` |
 | Window switcher / close window | `Super + Tab` / `Super + W` |
 | Move / resize a window | `Super + left drag` / `Super + right drag` |
 | Switch desktop / send window to desktop | `Super + 1–9` / `Super + Shift + 1–9` |

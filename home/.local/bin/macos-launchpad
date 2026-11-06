@@ -1,0 +1,55 @@
+#!/usr/bin/python
+import sys
+import gi
+gi.require_version('Gtk','3.0')
+gi.require_version('GtkLayerShell','0.1')
+from gi.repository import Gtk, Gdk, Gio, GLib, GtkLayerShell
+
+window=Gtk.Window(title='Launchpad')
+window.set_name('launchpad');window.set_decorated(False)
+monitor=Gdk.Display.get_default().get_primary_monitor()
+geometry=monitor.get_geometry() if monitor else None
+window.set_size_request(min(920, int(geometry.width * .92)) if geometry else 920, min(570, int(geometry.height * .80)) if geometry else 570)
+GtkLayerShell.init_for_window(window)
+GtkLayerShell.set_namespace(window,'macos-launchpad')
+GtkLayerShell.set_layer(window,GtkLayerShell.Layer.OVERLAY)
+GtkLayerShell.set_keyboard_mode(window,GtkLayerShell.KeyboardMode.EXCLUSIVE)
+outer=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=18);outer.set_border_width(24);window.add(outer)
+entry=Gtk.SearchEntry();entry.set_placeholder_text('Search applications');entry.set_size_request(370,42);entry.set_halign(Gtk.Align.CENTER);outer.pack_start(entry,False,False,0)
+scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC);scroll.set_vexpand(True);outer.pack_start(scroll,True,True,0)
+flow=Gtk.FlowBox();flow.set_valign(Gtk.Align.START);flow.set_selection_mode(Gtk.SelectionMode.NONE);flow.set_min_children_per_line(4);flow.set_max_children_per_line(7);flow.set_row_spacing(13);flow.set_column_spacing(9);flow.set_homogeneous(True);scroll.add(flow)
+theme=Gtk.IconTheme.get_default();apps={}
+for app in Gio.AppInfo.get_all():
+ if app.should_show():
+  ident=app.get_id() or app.get_executable()
+  if ident: apps.setdefault(ident,app)
+items=sorted(apps.values(),key=lambda a:a.get_display_name().casefold())
+buttons=[]
+def launch(app):
+ try:
+  app.launch([],None)
+  Gtk.main_quit()
+ except GLib.Error as error:
+  entry.set_text('');entry.set_placeholder_text('Unable to open '+app.get_display_name());entry.grab_focus()
+for app in items:
+ button=Gtk.Button();button.set_name('app');button.set_tooltip_text(app.get_display_name());button.get_accessible().set_name(app.get_display_name())
+ content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=7);content.set_halign(Gtk.Align.CENTER);button.add(content)
+ icon=app.get_icon()
+ image=Gtk.Image.new_from_gicon(icon,Gtk.IconSize.DIALOG) if icon else Gtk.Image.new_from_icon_name('application-x-executable',Gtk.IconSize.DIALOG)
+ image.set_pixel_size(55);content.pack_start(image,False,False,0)
+ label=Gtk.Label(label=app.get_display_name());label.set_ellipsize(3);label.set_max_width_chars(16);label.set_justify(Gtk.Justification.CENTER);content.pack_start(label,False,False,0)
+ button.connect('clicked',lambda _,app=app:launch(app));flow.add(button);buttons.append((app,button.get_parent()))
+def search(*_):
+ text=entry.get_text().casefold().strip()
+ for app,child in buttons:
+  child.set_visible(not text or text in (app.get_display_name()+' '+(app.get_description() or '')).casefold())
+def activate(*_):
+ text=entry.get_text().casefold().strip()
+ visible=[app for app,_ in buttons if not text or text in (app.get_display_name()+' '+(app.get_description() or '')).casefold()]
+ if visible:launch(visible[0])
+entry.connect('search-changed',search);entry.connect('activate',activate)
+window.connect('key-press-event',lambda _,e:(Gtk.main_quit() or True) if e.keyval==Gdk.KEY_Escape else False)
+window.connect('destroy',Gtk.main_quit)
+css=Gtk.CssProvider();css.load_from_data(b'''window#launchpad {background:rgba(25,27,34,0.96);border:1px solid rgba(255,255,255,0.20);border-radius:20px;color:#f5f5f7;} searchentry {background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.16);border-radius:11px;padding:5px 12px;} button#app {background:transparent;border:0;box-shadow:none;border-radius:13px;color:#f5f5f7;padding:10px 6px;min-height:86px;} button#app:hover,button#app:focus {background:rgba(255,255,255,0.14);} button#app label {color:#f5f5f7;font-family:Inter,sans-serif;font-size:12px;}''')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+window.show_all();entry.grab_focus();Gtk.main()

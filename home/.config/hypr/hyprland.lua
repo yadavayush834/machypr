@@ -25,8 +25,8 @@ run("SUPER + Q","kitty")
 run("SUPER + E","dolphin")
 run("SUPER + B",os.getenv("HOME").."/.local/bin/brave")
 run("SUPER + C",os.getenv("HOME").."/.local/bin/code")
-run("SUPER + Space","wofi --show drun")
-run("SUPER + R","wofi --show drun")
+run("SUPER + Space",os.getenv("HOME").."/.local/bin/macos-launchpad")
+run("SUPER + R",os.getenv("HOME").."/.local/bin/macos-launchpad")
 run("SUPER + L","hyprlock")
 run("SUPER + V",os.getenv("HOME").."/.local/bin/arch-clipboard")
 run("SUPER + Escape",os.getenv("HOME").."/.local/bin/arch-power")
@@ -63,3 +63,6 @@ hl.bind("SUPER + Tab",hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-menu
 
 -- Request native GTK title bars with WhiteSur traffic-light buttons.
 hl.env("GTK_CSD", "1")
+
+-- Toggle the auto-hiding dock with Super+Alt+D.
+run("SUPER + ALT + D","pkill -USR1 -u $(id -u) -f ^/usr/bin/python.*/macos-dock$")

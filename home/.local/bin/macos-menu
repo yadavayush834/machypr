@@ -21,7 +21,7 @@ menus={
 'view':[('Enter Full Screen',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.fullscreen({mode="fullscreen"})'],stdout=subprocess.DEVNULL)),('Zoom In',key('CTRL','plus')),('Zoom Out',key('CTRL','minus')),('Actual Size',key('CTRL','0')),None,('Show Desktop',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.focus({workspace=8})'],stdout=subprocess.DEVNULL))],
 'help':[('Keyboard Shortcuts',launch(local('macos-menu'),'shortcuts')),('Desktop Appearance',launch('gnome-theme-switcher'))],
 'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch('gnome-theme-switcher')),('Lock Screen',launch('hyprlock'))],
-'shortcuts':[(label,lambda:None) for label in ['⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Spotlight','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
+'shortcuts':[(label,lambda:None) for label in ['⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Launchpad','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
 'calendar':[(datetime.datetime.now().strftime('%A, %d %B %Y'),lambda:None)]}
 def show_control():run([local('macos-menu'),'control'])
 if kind=='window':
