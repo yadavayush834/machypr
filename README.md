@@ -74,6 +74,10 @@ Choose **Apple menu → Appearance…** or **Control Center → Appearance…**,
 
 ![Dark appearance](assets/macos-dark.png)
 
+## Sound effects
+
+Big Sur notification, volume-key and screenshot effects are downloaded locally by the installer. Open **Control Center → Sound Effects…** to preview, enable or disable them. Effects play at 35% relative volume and respect output mute; repeated events are rate-limited. The sound files are not bundled in this repository.
+
 ## Shortcuts
 
 **Super** means your keyboard's Windows/logo key (shown as ⌘ in the shortcut menu).

@@ -12,7 +12,9 @@ if not os.environ.get('DBUS_SESSION_BUS_ADDRESS') or not shutil.which('gsettings
     raise SystemExit(0)
 backup = Path(sys.argv[1]) / 'gsettings.json'
 interface = 'org.gnome.desktop.interface'
-values = [(interface, 'gtk-theme', 'WhiteSur-Dark'),
+values = [('org.gnome.desktop.sound', 'theme-name', 'MacDesktop'),
+          ('org.gnome.desktop.sound', 'event-sounds', 'true'),
+          ('org.gnome.desktop.sound', 'input-feedback-sounds', 'false'), (interface, 'gtk-theme', 'WhiteSur-Dark'),
           (interface, 'icon-theme', 'WhiteSur'),
           (interface, 'cursor-theme', 'WhiteSur-cursors'),
           (interface, 'font-name', 'Inter 11'),

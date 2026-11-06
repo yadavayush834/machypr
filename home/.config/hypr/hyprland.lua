@@ -50,7 +50,7 @@ for i=1,10 do
 end
 hl.bind("SUPER + mouse:272",hl.dsp.window.drag(),{mouse=true})
 hl.bind("SUPER + mouse:273",hl.dsp.window.resize(),{mouse=true})
-for key,cmd in pairs({XF86AudioRaiseVolume="wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+",XF86AudioLowerVolume="wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",XF86AudioMute="wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",XF86MonBrightnessUp="brightnessctl set +5%",XF86MonBrightnessDown="brightnessctl set 5%-",XF86AudioPlay="playerctl play-pause",XF86AudioNext="playerctl next",XF86AudioPrev="playerctl previous"}) do
+for key,cmd in pairs({XF86AudioRaiseVolume=os.getenv("HOME").."/.local/bin/macos-volume up",XF86AudioLowerVolume=os.getenv("HOME").."/.local/bin/macos-volume down",XF86AudioMute=os.getenv("HOME").."/.local/bin/macos-volume mute",XF86MonBrightnessUp="brightnessctl set +5%",XF86MonBrightnessDown="brightnessctl set 5%-",XF86AudioPlay="playerctl play-pause",XF86AudioNext="playerctl next",XF86AudioPrev="playerctl previous"}) do
  hl.bind(key,hl.dsp.exec_cmd(cmd),{locked=true,repeating=true})
 end
 hl.gesture({fingers=3,direction="horizontal",action="workspace"})

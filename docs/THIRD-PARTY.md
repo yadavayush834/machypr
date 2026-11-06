@@ -21,3 +21,7 @@ original generated artwork from the earlier desktop profile. The active profile
 uses WhiteSur.png.
 
 `MacDesktopSymbols.ttf` and its source drawings are original MIT-licensed artwork, not Apple SF Symbols. Rebuild with `uv run --with fonttools python scripts/build-status-font.py`.
+
+## Optional local sound samples
+
+`scripts/install-sounds.py` downloads notification (Glass), critical (Basso), volume feedback (Media_Keys) and screenshot (Screen_Capture) samples from [ThisIsNoahEvans/BigSurSounds](https://github.com/ThisIsNoahEvans/BigSurSounds), pinned at `20dab112698edc9523afe9f09b8e921f75da8a96`. The original macOS sound recordings belong to Apple; audio is stored only under the installing user’s sound directory and is not redistributed in this repository. The installer converts them to WAV with FFmpeg.

@@ -111,6 +111,7 @@ if ! $config_only && ! $desktop_only; then
 fi
 if ! $config_only; then
  bash "$root/scripts/install-themes.sh"
+ python "$root/scripts/install-sounds.py"
 fi
 mode=full
 $desktop_only && mode=desktop

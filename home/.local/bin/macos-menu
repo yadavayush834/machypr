@@ -28,6 +28,7 @@ menus={
 'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch('gnome-theme-switcher')),('Lock Screen',launch('hyprlock'))],
 'shortcuts':[(label,lambda:None) for label in ['⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Launchpad','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
 'appearance':[(('✓ ' if appearance_module['preference']()['mode']==mode else '')+label,launch(local('macos-appearance'),mode)) for mode,label in [('light','Light'),('dark','Dark'),('auto','Auto (Light 7 AM–7 PM)')]],
+'sound-effects':[('Play Preview',launch(local('macos-sound'),'notification')),('Enable Sound Effects',launch(local('macos-sound'),'on')),('Disable Sound Effects',launch(local('macos-sound'),'off'))],
 'calendar':[(datetime.datetime.now().strftime('%A, %d %B %Y'),lambda:None)]}
 def show_control():run([local('macos-menu'),'control'])
 if kind=='window':
@@ -69,6 +70,9 @@ if kind == 'control':
  appearance_button=Gtk.Button(label='Appearance…  '+appearance_module['preference']()['mode'].title())
  appearance_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'appearance'])))
  panel.pack_start(appearance_button,False,False,0)
+ sound_button=Gtk.Button(label='Sound Effects…')
+ sound_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'sound-effects'])))
+ panel.pack_start(sound_button,False,False,0)
  for title,initial,callback in [('Display',70,lambda value:run(['brightnessctl','set',str(round(value))+'%'])),('Sound',50,lambda value:run(['wpctl','set-volume','@DEFAULT_AUDIO_SINK@',str(round(value))+'%']))]:
   try:
    if title=='Sound':

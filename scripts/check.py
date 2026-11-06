@@ -11,7 +11,8 @@ import tomllib
 
 root = Path(__file__).resolve().parent.parent
 for source in list((root/'scripts').glob('*.py')) + list((root/'home/.local/bin').glob('macos-*')):
-    ast.parse(source.read_text())
+    if source.suffix==".py" or "python" in source.read_text().splitlines()[0]:
+        ast.parse(source.read_text())
 for source in (root/'home').rglob('*.json*'):
     json.loads(source.read_text())
 tomllib.loads((root/'home/.config/starship.toml').read_text())
