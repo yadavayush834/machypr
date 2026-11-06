@@ -39,7 +39,7 @@ run("SUPER + ALT + N",os.getenv("HOME").."/.local/bin/arch-wifi")
 hl.bind("SUPER + W",hl.dsp.window.close())
 hl.bind("SUPER + SHIFT + Space",hl.dsp.window.float({action="toggle"}))
 hl.bind("SUPER + J",hl.dsp.layout("togglesplit"))
-run("SUPER + S",os.getenv("HOME").."/.local/bin/macos-screenshot region")
+run("SUPER + S",os.getenv("HOME").."/.local/bin/macos-screenshot region --clipboard")
 hl.bind("SUPER + SHIFT + S",hl.dsp.window.move({workspace="special:scratch"}))
 for _,d in ipairs({"left","right","up","down"}) do
  hl.bind("SUPER + "..d,hl.dsp.focus({direction=d}))
