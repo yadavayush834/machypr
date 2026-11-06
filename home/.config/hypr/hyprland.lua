@@ -1,11 +1,11 @@
 -- ARCH LINUX — Lua configuration for Hyprland 0.57
 hl.monitor({output="",mode="preferred",position="auto",scale="auto"})
-hl.env("XCURSOR_THEME", "Adwaita")
+hl.env("XCURSOR_THEME", "WhiteSur-cursors")
 hl.env("XCURSOR_SIZE", "24")
 hl.config({
- general={gaps_in=5,gaps_out=10,border_size=2,resize_on_border=true,layout="dwindle",
+ general={gaps_in=5,gaps_out=10,border_size=1,resize_on_border=true,layout="dwindle",
   col={active_border={colors={"rgba(5ca9dfee)","rgba(3778b7ee)"},angle=45},inactive_border="rgba(293345aa)"}},
- decoration={rounding=10,active_opacity=1.0,inactive_opacity=0.97,
+ decoration={rounding=12,active_opacity=1.0,inactive_opacity=1.0,
   shadow={enabled=true,range=22,render_power=3,color=0x55000000},
   blur={enabled=true,size=5,passes=2,vibrancy=0.16}},
  animations={enabled=true},dwindle={preserve_split=true},
@@ -13,11 +13,11 @@ hl.config({
  misc={disable_hyprland_logo=true,force_default_wallpaper=0}
 })
 pcall(dofile, os.getenv("HOME") .. "/.config/hypr/wallpaper-colors.lua")
-hl.curve("arch", {type="bezier",points={{0.22,1},{0.36,1}}})
-hl.animation({leaf="windows",enabled=true,speed=4,bezier="arch",style="popin 94%"})
-hl.animation({leaf="workspaces",enabled=true,speed=3,bezier="arch",style="slide"})
-hl.animation({leaf="fade",enabled=true,speed=3,bezier="arch"})
-hl.animation({leaf="border",enabled=true,speed=5,bezier="arch"})
+hl.curve("macos", {type="bezier",points={{0.22,1},{0.36,1}}})
+hl.animation({leaf="windows",enabled=true,speed=4,bezier="macos",style="popin 94%"})
+hl.animation({leaf="workspaces",enabled=true,speed=3,bezier="macos",style="slide"})
+hl.animation({leaf="fade",enabled=true,speed=3,bezier="macos"})
+hl.animation({leaf="border",enabled=true,speed=5,bezier="macos"})
 hl.on("hyprland.start",function() hl.exec_cmd(os.getenv("HOME").."/.local/bin/arch-start") end)
 local function run(keys,cmd) hl.bind(keys,hl.dsp.exec_cmd(cmd)) end
 run("SUPER + Return","kitty")
@@ -34,7 +34,7 @@ run("SUPER + F1","kitty --title Shortcuts "..os.getenv("HOME").."/.local/bin/arc
 run("Print",os.getenv("HOME").."/.local/bin/arch-shot")
 run("SUPER + SHIFT + R","hyprctl reload")
 run("SUPER + ALT + W",os.getenv("HOME").."/.local/bin/arch-wallpaper")
-run("SUPER + ALT + B",os.getenv("HOME").."/.local/bin/arch-waybar-style")
+run("SUPER + ALT + B",os.getenv("HOME").."/.local/bin/macos-menu control")
 run("SUPER + ALT + N",os.getenv("HOME").."/.local/bin/arch-wifi")
 hl.bind("SUPER + W",hl.dsp.window.close())
 hl.bind("SUPER + SHIFT + Space",hl.dsp.window.float({action="toggle"}))
@@ -54,3 +54,12 @@ for key,cmd in pairs({XF86AudioRaiseVolume="wpctl set-volume -l 1 @DEFAULT_AUDIO
  hl.bind(key,hl.dsp.exec_cmd(cmd),{locked=true,repeating=true})
 end
 hl.gesture({fingers=3,direction="horizontal",action="workspace"})
+
+-- macOS desktop: freely positioned windows and translucent desktop surfaces.
+hl.window_rule({match={class=".*"},float=true,size={1040,590},center=true})
+hl.layer_rule({match={namespace="waybar"},blur=true})
+hl.layer_rule({match={namespace="macos-dock"},blur=true})
+hl.bind("SUPER + Tab",hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-menu window"))
+
+-- Request native GTK title bars with WhiteSur traffic-light buttons.
+hl.env("GTK_CSD", "1")

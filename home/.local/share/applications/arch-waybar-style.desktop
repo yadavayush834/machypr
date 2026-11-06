@@ -8,3 +8,5 @@ Icon=preferences-desktop-theme
 Terminal=false
 Categories=Settings;DesktopSettings;
 Keywords=waybar;theme;style;bar;
+
+NoDisplay=true

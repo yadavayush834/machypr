@@ -1,65 +1,67 @@
 {
   "layer": "top",
   "position": "top",
-  "height": 30,
-  "margin-top": 8,
-  "margin-left": 10,
-  "margin-right": 10,
+  "height": 25,
   "spacing": 0,
+  "exclusive": true,
   "modules-left": [
-    "custom/brand",
-    "hyprland/workspaces"
+    "custom/apple",
+    "custom/app",
+    "custom/file",
+    "custom/edit",
+    "custom/view",
+    "custom/window",
+    "custom/help"
   ],
-  "modules-center": [
+  "modules-center": [],
+  "modules-right": [
+    "bluetooth",
+    "network",
+    "pulseaudio",
+    "battery",
+    "custom/search",
+    "custom/control",
     "clock"
   ],
-  "modules-right": [
-    "pulseaudio",
-    "network",
-    "bluetooth",
-    "battery",
-    "tray",
-    "custom/power"
-  ],
-  "custom/brand": {
-    "format": "\uf303  Arch Linux",
-    "on-click": "wofi --show drun",
-    "tooltip": false
+  "custom/apple": {
+    "format": "\uf179",
+    "tooltip": false,
+    "on-click": "@HOME@/.local/bin/macos-menu apple"
   },
-  "hyprland/workspaces": {
-    "format": "{name}",
-    "persistent-workspaces": {
-      "*": 5
-    },
-    "on-click": "activate"
+  "custom/app": {
+    "exec": "@HOME@/.local/bin/macos-app-name",
+    "return-type": "json",
+    "interval": 1,
+    "tooltip": false,
+    "on-click": "@HOME@/.local/bin/macos-menu app"
   },
   "clock": {
-    "format": "{:%H:%M}",
-    "tooltip-format": "{:%A, %d %B %Y}"
-  },
-  "cpu": {
-    "format": "\uf4bc  {usage}%",
-    "interval": 5
-  },
-  "memory": {
-    "format": "\uefc5  {percentage}%",
-    "interval": 5
-  },
-  "pulseaudio": {
-    "format": "\uf028  {volume}%",
-    "format-muted": "\ueee8  muted",
-    "on-click": "pavucontrol"
+    "format": "{:%a %d %b  %H:%M}",
+    "tooltip-format": "{:%A, %d %B %Y}",
+    "on-click": "@HOME@/.local/bin/macos-menu calendar"
   },
   "network": {
     "format-wifi": "\uf1eb",
-    "format-ethernet": "\udb80\ude00",
+    "format-ethernet": "\uf1eb",
     "format-disconnected": "\udb82\udd2d",
-    "max-length": 18,
-    "on-click": "@HOME@/.local/bin/arch-wifi",
-    "on-click-right": "@HOME@/.local/bin/arch-network"
+    "tooltip-format": "{essid}",
+    "on-click": "@HOME@/.local/bin/arch-wifi"
+  },
+  "bluetooth": {
+    "format": "\uf293",
+    "format-disabled": "",
+    "format-off": "",
+    "format-connected": "\uf293",
+    "on-click": "@HOME@/.local/bin/arch-bluetooth"
+  },
+  "pulseaudio": {
+    "format": "\uf028",
+    "format-muted": "\uf6a9",
+    "on-click": "pavucontrol"
   },
   "battery": {
-    "format": "{capacity}%",
+    "format": "{capacity}% {icon}",
+    "format-charging": "{capacity}% \uf240",
     "format-icons": [
       "\uf244",
       "\uf243",
@@ -67,26 +69,44 @@
       "\uf241",
       "\uf240"
     ],
-    "format-charging": "\uf0e7 {capacity}%",
     "states": {
-      "warning": 25,
+      "warning": 20,
       "critical": 10
     }
   },
-  "tray": {
-    "spacing": 10
+  "custom/search": {
+    "format": "\uf002",
+    "tooltip": false,
+    "on-click": "wofi --show drun"
   },
-  "custom/power": {
-    "format": "\u23fb",
-    "on-click": "@HOME@/.local/bin/arch-power",
-    "tooltip": false
+  "custom/control": {
+    "format": "\uf1de",
+    "tooltip": false,
+    "on-click": "@HOME@/.local/bin/macos-menu control"
   },
-  "bluetooth": {
-    "format": "\udb80\udcaf",
-    "format-disabled": "\udb80\udcb2",
-    "format-off": "\udb80\udcb2",
-    "format-connected": "\udb80\udcb1",
-    "tooltip-format": "Bluetooth: {status}\n{num_connections} connected",
-    "on-click": "@HOME@/.local/bin/arch-bluetooth"
+  "custom/file": {
+    "format": "File",
+    "tooltip": false,
+    "on-click": "@HOME@/.local/bin/macos-menu file"
+  },
+  "custom/edit": {
+    "format": "Edit",
+    "tooltip": false,
+    "on-click": "@HOME@/.local/bin/macos-menu edit"
+  },
+  "custom/view": {
+    "format": "View",
+    "tooltip": false,
+    "on-click": "@HOME@/.local/bin/macos-menu view"
+  },
+  "custom/window": {
+    "format": "Window",
+    "tooltip": false,
+    "on-click": "@HOME@/.local/bin/macos-menu window"
+  },
+  "custom/help": {
+    "format": "Help",
+    "tooltip": false,
+    "on-click": "@HOME@/.local/bin/macos-menu help"
   }
 }

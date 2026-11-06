@@ -1,84 +1,102 @@
 <div align="center">
 
-# Arch Linux · Hyprland
+# macOS-style Arch Linux
 
-A clean, keyboard-driven Arch desktop with wallpaper-aware colors, six Waybar
-styles, useful apps and a ready-to-code development environment.
+An Apple-style menu bar, translucent dock, WhiteSur icons and floating windows
+for Arch Linux and Hyprland.
 
-[Install](#install) · [Features](#whats-included) · [Shortcuts](#shortcuts) · [Full guide](docs/REFERENCE.md)
+[Install](#install) · [Shortcuts](#shortcuts) · [Guide](docs/REFERENCE.md) · [Credits](docs/THIRD-PARTY.md)
 
 </div>
 
-![Arch Linux desktop with Waybar](assets/desktop.png)
+![Mac-style Arch desktop with Apple menu bar and dock](assets/macos-desktop.png)
+
+## The desktop
+
+- **Menu bar:** Apple menu, active application name, shortcut menus, compact status icons and right-aligned date.
+- **Dock:** Finder-style file manager icon, Launchpad, browser, Terminal, Code, Preview-style PDF viewer, settings, Downloads and Trash. Running apps have indicators; clicking focuses or launches them.
+- **Appearance:** WhiteSur Dark GTK 3/4 styling, WhiteSur icons and cursors, Big Sur-style wallpaper, and Inter UI typography.
+- **Windows:** floating by default, rounded corners, shadows and desktop blur.
+- **Tools:** Spotlight-style launcher, clipboard history, screenshots, Wi-Fi, Bluetooth and audio controls.
+
+This is a desktop configuration for **Arch Linux**, not a bootable OS image or
+native macOS. Inter substitutes for Apple's San Francisco. The menu bar supplies
+shortcut actions rather than exporting every application's native menus. Linux
+apps retain their own title-bar behavior; styling varies across GTK, Qt and Electron.
+
+![Apple-style desktop menu](assets/macos-menu.png)
 
 ## Install
 
-On **Arch Linux x86_64 with Hyprland 0.57+**, an internet connection and sudo,
-run this in a terminal as your normal user:
+Requires **Arch Linux x86_64, Hyprland 0.57+, internet and sudo**. Run as your
+regular user:
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/yadavayush834/arch-hyprland-dotfiles/main/bootstrap.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/yadavayush834/arch-hyprland-dotfiles/main/bootstrap.sh) --desktop-only
 ```
 
-The installer updates Arch, installs the desktop, apps and developer tools, then
-backs up and applies the settings. It asks for your sudo password and may download
-several gigabytes. Log out and back in when finished. If `curl` is missing, run
-`sudo pacman -Syu curl` first.
+This updates Arch, installs desktop dependencies and pinned upstream WhiteSur
+themes, backs up replaced files, and applies this configuration. Log out and back
+in afterward. Existing personal monitor rules are replaced with automatic monitor
+configuration; adjust the Lua file for your displays.
 
-Preview the install by adding `--dry-run` to the command. Other useful options are
-`--desktop-only`, `--config-only` and `--no-projects`. See the [full guide](docs/REFERENCE.md)
-for details, backup and recovery, and how to review the code before running it.
+To inspect the plan first, add `--dry-run`. For a local install:
 
-## What's included
+```bash
+git clone https://github.com/yadavayush834/arch-hyprland-dotfiles.git
+cd arch-hyprland-dotfiles
+./install.sh --desktop-only --dry-run
+./install.sh --desktop-only
+```
 
-- **Desktop:** Hyprland, Waybar, Wofi, Kitty, Dolphin, a lock screen and clipboard history.
-- **Make it yours:** four generated wallpapers, six bar styles and colors that follow your wallpaper.
-- **Everyday apps:** Brave, VS Code, LibreOffice, Okular, Kdenlive, GIMP and Inkscape.
-- **Development:** Git, Node.js, Python, Rust, C/C++ tools, and React and Next.js starters with ESLint.
-- **Connectivity:** Wi‑Fi and Bluetooth launchers, a Bluetooth bar button, and PipeWire audio.
+Options:
 
-![Wallpaper selector on the Hyprland desktop](assets/wallpaper-menu.png)
+| Option | Behavior |
+| --- | --- |
+| `--desktop-only` | Desktop packages and themes; skip developer and office apps |
+| `--config-only` | Configuration only; assumes fonts and WhiteSur themes are already installed |
+| `--no-activate` | Write files without restarting daemons or setting live GSettings |
+| `--dry-run` | Show the plan without changing anything |
+| `--no-projects` | Skip example projects when using the full installation |
+
+Without `--desktop-only`, the original full workstation installer also installs
+Brave, VS Code, office/creative apps, development tools and example projects.
+The dock opens installed applications; desktop-only users can install their
+preferred browser and editor separately.
 
 ## Shortcuts
 
-**Super** is the Windows/logo key. Open **Keyboard Shortcuts** from the app
-launcher, or press **Super + F1**, for the complete guide.
+**Super** means your keyboard's Windows/logo key (shown as ⌘ in the shortcut menu).
 
 | Action | Keys |
 | --- | --- |
-| App launcher / terminal / close window | `Super + Space` / `Super + Enter` / `Super + W` |
-| Wallpaper / Waybar style | `Super + Alt + W` / `Super + Alt + B` |
-| Wi‑Fi / Bluetooth | `Super + Alt + N` / click the Bluetooth bar icon |
-| Switch / move between workspaces | `Super + 1–9` / `Super + Shift + 1–9` |
-| Focus / move / resize a window | `Super + arrows` / `Super + left drag` / `Super + right drag` |
-| Float a window / change split | `Super + Shift + Space` / `Super + J` |
+| Spotlight / Terminal / Finder-style file manager | `Super + Space` / `Super + Return` / `Super + E` |
+| Window switcher / close window | `Super + Tab` / `Super + W` |
+| Move / resize a window | `Super + left drag` / `Super + right drag` |
+| Switch desktop / send window to desktop | `Super + 1–9` / `Super + Shift + 1–9` |
+| Toggle floating / keyboard focus | `Super + Shift + Space` / `Super + arrows` |
+| Wallpaper / controls / Wi-Fi | `Super + Alt + W` / `Super + Alt + B` / `Super + Alt + N` |
 | Screenshot / clipboard / lock | `Print` / `Super + V` / `Super + L` |
 
-Open multiple apps on the same workspace and Hyprland tiles them automatically.
-
-## Wi‑Fi and Bluetooth
-
-Click the network or Bluetooth icon in the bar, or search **Wi-Fi** or
-**Bluetooth** in the launcher. Wi‑Fi opens `nmtui` if NetworkManager is active;
-on an `iwd` system it opens an interactive prompt with connection instructions.
-Bluetooth opens Blueman for pairing.
-
-The installer includes the tools but leaves network services under your control.
-On a system using `systemd-networkd`, enable iwd and Bluetooth if needed:
-
-```bash
-sudo systemctl enable --now iwd bluetooth
-```
-
-If NetworkManager already manages Wi‑Fi, keep its existing backend. The installer
-does not switch network managers or configure your network credentials.
+The wallpaper picker preserves the fixed Mac-style system colors.
 
 ## Restore
 
-Configuration files are backed up before installation. To restore the latest
-backup, run `~/.local/bin/arch-rice-restore`, then log out and back in. This
-restores configuration; installed packages and projects remain in place.
+```bash
+~/.local/bin/arch-rice-restore
+```
 
-The configuration-only install and restore have been tested in an isolated home;
-the full installer has not yet been tested on a second clean Arch machine.
-[Full guide](docs/REFERENCE.md) · [MIT License](LICENSE)
+This restores the last installer backup, including saved GSettings when run in a
+desktop session. Log out and back in afterward. Installed theme resources,
+packages and generated projects remain installed. See the [guide](docs/REFERENCE.md).
+
+## Validation and credits
+
+`bash scripts/check.sh` checks syntax, portable paths and an isolated repeat
+install/restore with a different username. The desktop was checked visually on
+Hyprland 0.57.1. The full privileged install has not been tested on a second clean
+Arch machine.
+
+Configuration and original helpers: [MIT](LICENSE). WhiteSur styling and wallpaper:
+[vinceliuice](https://github.com/vinceliuice/WhiteSur-gtk-theme).
+[Full upstream credits and licenses](docs/THIRD-PARTY.md).

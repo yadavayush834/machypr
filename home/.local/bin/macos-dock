@@ -1,0 +1,42 @@
+#!/usr/bin/python
+import gi,json,subprocess,os
+from pathlib import Path
+gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
+from gi.repository import Gtk,Gdk,GLib,GtkLayerShell
+h=Path.home()
+def spawn(args):subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+def clients():
+ try:return json.loads(subprocess.check_output(['hyprctl','clients','-j'],stderr=subprocess.DEVNULL))
+ except Exception:return []
+apps=[('Finder','org.kde.dolphin','system-file-manager',['dolphin']),('Launchpad','','view-app-grid',['wofi','--show','drun']),('Brave','brave-browser','brave-browser',[str(h/'.local/bin/brave')]),('Terminal','kitty','utilities-terminal',['kitty']),('Visual Studio Code','code','visual-studio-code',[str(h/'.local/bin/code')]),('Preview','org.kde.okular','org.kde.okular',['okular']),('System Settings','','preferences-system',[str(h/'.local/bin/macos-menu'),'control'])]
+window=Gtk.Window();window.set_name('macos-dock');window.set_decorated(False);window.set_resizable(False)
+GtkLayerShell.init_for_window(window);GtkLayerShell.set_namespace(window,'macos-dock');GtkLayerShell.set_layer(window,GtkLayerShell.Layer.TOP);GtkLayerShell.set_anchor(window,GtkLayerShell.Edge.BOTTOM,True);GtkLayerShell.set_margin(window,GtkLayerShell.Edge.BOTTOM,9);GtkLayerShell.set_exclusive_zone(window,84)
+box=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=3);box.set_border_width(7);window.add(box)
+theme=Gtk.IconTheme.new();theme.set_custom_theme('WhiteSur')
+indicators=[]
+def activate(classname,cmd):
+ found=[w for w in clients() if w['class']==classname] if classname else []
+ if found:
+  w=found[0]
+  if w['workspace']['name'].startswith('special:'):subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace=hl.get_active_workspace().addressable_name,window='+json.dumps('address:'+w['address'])+',follow=false})'],stdout=subprocess.DEVNULL)
+  subprocess.run(['hyprctl','dispatch','hl.dsp.focus({window='+json.dumps('address:'+w['address'])+'})'],stdout=subprocess.DEVNULL)
+ else:spawn(cmd)
+for title,classname,icon,cmd in apps:
+ button=Gtk.Button();button.set_tooltip_text(title);button.get_accessible().set_name(title);content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=1)
+ try:image=Gtk.Image.new_from_pixbuf(theme.load_icon(icon,49,Gtk.IconLookupFlags.FORCE_SIZE))
+ except Exception:image=Gtk.Image.new_from_icon_name(icon,Gtk.IconSize.DIALOG)
+ content.pack_start(image,False,False,0);dot=Gtk.Label(label='');dot.set_name('indicator');content.pack_start(dot,False,False,0)
+ button.add(content);button.connect('clicked',lambda _,cl=classname,cmd=cmd:activate(cl,cmd));box.pack_start(button,False,False,0);indicators.append((classname,dot))
+separator=Gtk.Separator(orientation=Gtk.Orientation.VERTICAL);box.pack_start(separator,False,False,5)
+for title,icon,cmd in [('Downloads','folder-download',[ 'dolphin',str(h/'Downloads')]),('Trash','user-trash',['dolphin','trash:/'])]:
+ button=Gtk.Button();button.set_tooltip_text(title);button.get_accessible().set_name(title)
+ try:button.add(Gtk.Image.new_from_pixbuf(theme.load_icon(icon,49,Gtk.IconLookupFlags.FORCE_SIZE)))
+ except Exception:button.add(Gtk.Image.new_from_icon_name(icon,Gtk.IconSize.DIALOG))
+ button.connect('clicked',lambda _,cmd=cmd:spawn(cmd));box.pack_start(button,False,False,0)
+css=Gtk.CssProvider();css.load_from_data(b'window#macos-dock {background:rgba(230,230,240,0.28);border:1px solid rgba(255,255,255,0.48);border-radius:19px;} button {background:transparent;border:0;box-shadow:none;border-radius:10px;padding:2px 4px;min-width:49px;min-height:56px;} button:hover,button:focus {background:rgba(255,255,255,0.20);} #indicator {font-size:8px;min-height:7px;color:#ffffff;} separator {background:rgba(255,255,255,0.3);min-width:1px;margin:7px 1px;} tooltip {font-family:Inter;background:#333338;color:white;border-radius:6px;}')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+def refresh():
+ running={w['class'] for w in clients()}
+ for classname,dot in indicators:dot.set_text('•' if classname in running else ' ')
+ return True
+GLib.timeout_add_seconds(2,refresh);refresh();window.show_all();window.connect('destroy',Gtk.main_quit);Gtk.main()

@@ -1,0 +1,51 @@
+#!/usr/bin/python
+import gi,json,subprocess,sys,os,datetime
+from pathlib import Path
+gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
+from gi.repository import Gtk,Gdk,GtkLayerShell
+home=Path.home();kind=sys.argv[1] if len(sys.argv)>1 else 'apple'
+def run(args): subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+def local(name):return str(home/'.local/bin'/name)
+try: active=json.loads(subprocess.check_output(['hyprctl','activewindow','-j']))
+except Exception:active={}
+address=active.get('address','');app=active.get('class','')
+def shortcut(mods,key):
+ subprocess.run(['hyprctl','dispatch','hl.dsp.send_shortcut({mods='+json.dumps(mods)+',key='+json.dumps(key)+',window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+def launch(*args):return lambda:run(list(args))
+def key(mods,k):return lambda:shortcut(mods,k)
+menus={
+'apple': [('About This Desktop',launch('notify-send','Desktop','WhiteSur desktop • macOS styling on Hyprland')),None,('System Settings…',lambda:show_control()),('App Store…',launch('brave','https://flathub.org')),None,('Sleep',launch('systemctl','suspend')),('Restart…',launch(local('arch-power'))),('Shut Down…',launch(local('arch-power'))),None,('Lock Screen',launch('hyprlock'))],
+'app':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Hide Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace="special:minimized",follow=false,window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL)),None,('Quit',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
+'file':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Open…',key('CTRL','o')),None,('Home',launch('dolphin',str(home))),('Downloads',launch('dolphin',str(home/'Downloads'))),None,('Close Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
+'edit':[('Undo',key('CTRL','z')),('Redo',key('CTRL SHIFT','z')),None,('Cut',key('CTRL','x')),('Copy',key('CTRL SHIFT' if app=='kitty' else 'CTRL','c')),('Paste',key('CTRL SHIFT' if app=='kitty' else 'CTRL','v')),('Select All',key('CTRL','a'))],
+'view':[('Enter Full Screen',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.fullscreen({mode="fullscreen"})'],stdout=subprocess.DEVNULL)),('Zoom In',key('CTRL','plus')),('Zoom Out',key('CTRL','minus')),('Actual Size',key('CTRL','0')),None,('Show Desktop',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.focus({workspace=8})'],stdout=subprocess.DEVNULL))],
+'help':[('Keyboard Shortcuts',launch(local('macos-menu'),'shortcuts')),('Desktop Appearance',launch('gnome-theme-switcher'))],
+'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch('gnome-theme-switcher')),('Lock Screen',launch('hyprlock'))],
+'shortcuts':[(label,lambda:None) for label in ['⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Spotlight','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
+'calendar':[(datetime.datetime.now().strftime('%A, %d %B %Y'),lambda:None)]}
+def show_control():run([local('macos-menu'),'control'])
+if kind=='window':
+ try: clients=json.loads(subprocess.check_output(['hyprctl','clients','-j']))
+ except Exception:clients=[]
+ def focus(w):
+  if w['workspace']['name'].startswith('special:'):
+   subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace=hl.get_active_workspace().addressable_name,window='+json.dumps('address:'+w['address'])+'})'],stdout=subprocess.DEVNULL)
+  subprocess.run(['hyprctl','dispatch','hl.dsp.focus({window='+json.dumps('address:'+w['address'])+'})'],stdout=subprocess.DEVNULL)
+ menus[kind]=[(w['title'][:60],lambda w=w:focus(w)) for w in clients]
+win=Gtk.Window();win.set_name('macos-menu');win.set_decorated(False);win.set_resizable(False)
+GtkLayerShell.init_for_window(win);GtkLayerShell.set_namespace(win,'macos-menu');GtkLayerShell.set_layer(win,GtkLayerShell.Layer.OVERLAY)
+GtkLayerShell.set_keyboard_mode(win,GtkLayerShell.KeyboardMode.EXCLUSIVE)
+for edge in [GtkLayerShell.Edge.TOP,GtkLayerShell.Edge.LEFT]:GtkLayerShell.set_anchor(win,edge,True)
+GtkLayerShell.set_margin(win,GtkLayerShell.Edge.TOP,27)
+x={'apple':8,'app':40,'file':125,'edit':170,'view':215,'window':260,'help':325}.get(kind,950)
+GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,x)
+box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=1);box.set_border_width(5);win.add(box)
+for item in menus.get(kind,menus['apple']):
+ if item is None:box.pack_start(Gtk.Separator(),False,False,4);continue
+ label,action=item;button=Gtk.Button(label=label);button.get_child().set_xalign(0)
+ def clicked(button,action=action):win.destroy();Gtk.main_quit();action()
+ button.connect('clicked',clicked);box.pack_start(button,False,False,0)
+provider=Gtk.CssProvider();provider.load_from_data(b'window {background:rgba(38,38,42,0.98);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),provider,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+win.connect('key-press-event',lambda w,e:(Gtk.main_quit() or True) if e.keyval==Gdk.KEY_Escape else False)
+win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit);win.show_all();Gtk.main()

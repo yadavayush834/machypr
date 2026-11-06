@@ -8,7 +8,7 @@ activate=true
 dry_run=false
 usage() {
  cat <<'HELP'
-Arch Linux / Hyprland dotfiles installer
+macOS-style Arch Linux / Hyprland desktop installer
 Usage: ./install.sh [options]
   --dry-run        Show package groups and target files; change nothing
   --config-only    Apply configuration only (dependencies already installed)
@@ -44,6 +44,7 @@ if $dry_run; then
   echo 'User installs: Brave (Flathub), native Microsoft VS Code, Rust stable components, Ruff, VS Code extensions.'
   $projects && echo 'Create ~/Projects/react-starter and ~/Projects/next-starter only if absent.'
  fi
+ if ! $config_only; then echo 'Install pinned WhiteSur GTK, icon and cursor themes.'; fi
  echo 'Back up overwritten configuration to ~/.local/state/arch-hyprland-dotfiles/backups/.'
  echo 'Apply templates below, plus a managed .bashrc block, documentation and restore utility:'
  (cd "$root/home" && find . -type f | sort)
@@ -108,6 +109,9 @@ if ! $config_only && ! $desktop_only; then
   fi
  fi
 fi
+if ! $config_only; then
+ bash "$root/scripts/install-themes.sh"
+fi
 mode=full
 $desktop_only && mode=desktop
 backup=$(python "$root/scripts/apply.py" "$root" "$mode")
@@ -122,8 +126,10 @@ if $activate && [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
   hyprctl reload
   exit 1
  fi
+ python "$root/scripts/session-settings.py" "$backup"
  for daemon in waybar hyprpaper hypridle dunst; do pkill -u "$UID" -x "$daemon" || true; done
- hyprctl eval 'hl.exec_cmd(os.getenv("HOME") .. "/.local/bin/arch-start")'
+ pkill -u "$UID" -f "^/usr/bin/python $HOME/.local/bin/macos-dock$" || true
+ hyprctl dispatch 'hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/arch-start")'
 fi
 touch "$state/INSTALL-COMPLETE"
 printf '\nInstalled. Super+Space opens applications; search Keyboard Shortcuts.\nRestore configuration: ~/.local/bin/arch-rice-restore\nLog out and back in for all shell, font and portal changes.\n'

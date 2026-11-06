@@ -35,6 +35,14 @@ def restore(backup):
                     os.unlink(temporary)
         elif target.exists() or target.is_symlink():
             target.unlink()
+    settings = backup / 'gsettings.json'
+    if settings.exists():
+        import subprocess
+        if shutil.which('gsettings') and os.environ.get('DBUS_SESSION_BUS_ADDRESS'):
+            for entry in json.loads(settings.read_text()):
+                subprocess.run(['gsettings', 'set', entry['schema'], entry['key'], entry['value']], check=True)
+        else:
+            print('Restore GSettings from gsettings.json after logging into a desktop session.')
     print(f'Restored configuration from {backup}. Log out and back in to restore the desktop session.')
 
 

@@ -1,5 +1,12 @@
-* {font-family: "JetBrainsMono Nerd Font";font-size:14px;}
-window {background-color:rgba(11,16,27,0.97);border:2px solid #6bb5ed;border-radius:10px;}
-#outer-box {padding:22px;} #input {padding:14px;background:#182130;color:#dce5ef;border:0;border-radius:12px;margin-bottom:14px;}
-#entry {padding:10px;border-radius:10px;} #entry:selected {background:#223448;}
-#text {color:#dce5ef;margin-left:10px;} #img {margin-left:6px;}
+* { font-family: "Inter"; font-size: 14px; }
+window { background-color: rgba(30,30,30,0.98); border: 1px solid #666666; border-radius: 12px; }
+#outer-box { padding: 18px; }
+#input { padding: 12px; background: #383838; color: #f2f2f2; border: 1px solid #666666; border-radius: 8px; margin-bottom: 12px; }
+#input:focus { border-color: #0a84ff; }
+#entry { padding: 9px; border-radius: 6px; }
+#entry:selected { background: #006bd6; }
+#text { color: #f2f2f2; margin-left: 10px; }
+#img { margin-left: 6px; }
+
+#input { caret-color: #ffffff; }
+#input placeholder { color: #b8b8be; }

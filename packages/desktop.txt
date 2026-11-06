@@ -20,7 +20,6 @@ bluez
 bluez-utils
 iwd
 network-manager-applet
-adwaita-cursors
 pipewire
 pipewire-pulse
 wireplumber
@@ -30,8 +29,6 @@ xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
 xdg-utils
 desktop-file-utils
-papirus-icon-theme
-breeze-gtk
 ttf-jetbrains-mono-nerd
 noto-fonts
 noto-fonts-emoji
@@ -40,3 +37,10 @@ python
 python-pillow
 curl
 git
+gtk-layer-shell
+python-gobject
+inter-font
+sassc
+glib2
+libxml2
+gsettings-desktop-schemas

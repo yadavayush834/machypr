@@ -1,0 +1,10 @@
+* { font-family: "Inter", "JetBrainsMono Nerd Font"; font-size: 12px; min-height: 0; border: none; border-radius: 0; box-shadow: none; text-shadow: none; }
+window#waybar { background: rgba(24,24,28,0.72); color: #ffffff; }
+#custom-apple { font-family: "JetBrainsMono Nerd Font"; font-size: 17px; padding: 0 15px 0 18px; }
+#custom-app { font-weight: 700; padding: 0 12px 0 2px; }
+#custom-file, #custom-edit, #custom-view, #custom-window, #custom-help { padding: 0 9px; font-weight: 500; }
+#bluetooth, #network, #pulseaudio, #custom-search, #custom-control { font-family: "JetBrainsMono Nerd Font"; font-size: 13px; padding: 0 9px; }
+#battery { padding: 0 9px; }
+#clock { padding: 0 18px 0 10px; font-weight: 500; }
+#battery.critical { color: #ff6961; }
+tooltip { font-family: "Inter"; background: #29292d; border: 1px solid #66666a; border-radius: 7px; color: #ffffff; }

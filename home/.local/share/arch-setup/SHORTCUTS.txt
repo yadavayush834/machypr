@@ -1,94 +1,20 @@
-ARCH LINUX — KEYBOARD SHORTCUTS & WINDOW GUIDE
+macOS-style Arch desktop
 
-Super means the Windows/logo key. Hold it while pressing the other key.
-Use the mouse wheel or Shift+PageUp / Shift+PageDown to scroll this guide.
+Super is the keyboard logo key (shown as Command in the menu).
 
-OPEN APPLICATIONS
-  Super + Space         Application launcher: type a name, then Enter
-  Super + R             Application launcher (alternative)
-  Super + Enter         New terminal
-  Super + Q             New terminal (alternative)
-  Super + B             Brave browser
-  Super + C             VS Code
-  Super + E             Dolphin file manager
-  Super + F1            This guide
-  Super + Alt + W       Choose wallpaper
-  Super + Alt + B       Choose Waybar style
-  Super + Alt + N       Wi-Fi
-  Launcher search       Type "Keyboard Shortcuts" to open this guide
-
-CLOSE APPLICATIONS
-  Super + W             Close the currently focused window
-  Ctrl + C              Stop a running command inside a terminal
-  Ctrl + W              Close a tab in many browsers/editors
-  Save your work before closing. Closing a window does not uninstall an app.
-
-TILING & MULTIPLE WINDOWS ON ONE SCREEN
-  Tiling is automatic: open two apps on the SAME workspace and Hyprland
-  arranges them side by side. Open a third app and a tile splits again.
-
-  Example:
-    1. Press Super + 2 to go to workspace 2.
-    2. Press Super + B to open Brave there.
-    3. Press Super + Enter to open a terminal next to it.
-    4. Press Super + E to add the file manager.
-    5. Press Super + arrow keys to focus different windows.
-
-  Super + arrows        Focus the window left/right/up/down
-  Super + J             Change split direction in the tiling layout
-  Super + left drag     Hold Super, hold left mouse button, drag to move
-  Super + right drag    Hold Super, hold right mouse button, drag to resize
-  Drag a window border  Resize neighbouring tiles
-  Super + Shift + Space Toggle focused window between tiled and floating
-
-  Tiled windows automatically share the available space.
-  Floating windows can overlap and can be moved/resized freely.
-  If an already-running app opens on another workspace, move its window
-  back with Super + Shift + the destination workspace number.
-
-WORKSPACES (SEPARATE DESKTOPS)
-  Super + 1 ... 9       Switch to workspace 1 ... 9
-  Super + 0             Switch to workspace 10
-  Super + Shift + 1...9 Move focused window to that workspace
-  Super + Shift + 0     Move focused window to workspace 10
-  Three-finger swipe    Change workspace horizontally on the touchpad
-  Click a bar number    Switch to that workspace
-
-  A workspace can contain several tiled windows on the same screen.
-  Workspaces let you keep separate groups: coding on 1, browser on 2, etc.
-
-SCRATCH WORKSPACE
-  Super + S             Show/hide the scratch workspace
-  Super + Shift + S     Send focused window to the scratch workspace
-  To bring it back: focus it, then Super + Shift + a workspace number.
-
-SCREENSHOTS, CLIPBOARD & SESSION
-  Print Screen          Select a region, save screenshot and copy it
-  Screenshot folder     ~/Pictures/Screenshots
-  Super + V             Search clipboard history; Enter copies a selection
-  Super + L             Lock your screen
-  Super + Escape        Lock / suspend / reboot / power-off menu
-  Super + Shift + R     Reload Hyprland configuration
-  Idle lock             Screen locks after 10 minutes of inactivity
-
-MEDIA & LAPTOP KEYS
-  Volume up/down        Raise/lower speaker volume
-  Mute                  Toggle speaker mute
-  Brightness up/down    Adjust screen brightness
-  Play/Pause            Toggle media playback
-  Next / Previous       Skip media track
-
-DEVELOPMENT QUICK START
-  React                 cd ~/Projects/react-starter && npm run dev
-  Next.js               cd ~/Projects/next-starter && npm run dev
-  Stop a dev server     Ctrl + C in its terminal
-  Python environment    python -m venv .venv && source .venv/bin/activate
-  New Rust project      cargo new my-app
-  Editor from terminal  code .
-
-SETUP FILES
-  Hyprland config       ~/.config/hypr/hyprland.lua
-  Setup guide           ~/.local/share/arch-setup/README.md
-  Original backups      ~/.local/state/arch-hyprland-dotfiles/backups/*
-
-Press Enter to close this guide.
+Super+Return: Terminal
+Super+E: Finder-style file manager
+Super+Space: Spotlight launcher
+Super+Tab: Window switcher
+Super+W: Close window
+Super+L: Lock
+Super+V: Clipboard
+Print: Screenshot
+Super+Alt+W: Wallpaper
+Super+Alt+B: Control menu
+Super+Alt+N: Wi-Fi
+Super+1-9: Switch desktop
+Super+Shift+1-9: Move window to desktop
+Super+left drag: Move window
+Super+right drag: Resize window
+Super+Shift+Space: Toggle floating

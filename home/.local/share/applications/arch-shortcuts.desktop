@@ -2,7 +2,7 @@
 Version=1.0
 Type=Application
 Name=Keyboard Shortcuts
-GenericName=Arch Linux Window and Keyboard Guide
+GenericName=Desktop Keyboard Guide
 Comment=Learn application launcher, closing apps, tiling, workspaces, screenshots and all desktop keybindings
 Exec=kitty --title "Keyboard Shortcuts" @HOME@/.local/bin/arch-shortcuts
 Icon=preferences-desktop-keyboard-shortcuts

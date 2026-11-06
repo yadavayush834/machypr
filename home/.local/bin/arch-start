@@ -15,3 +15,7 @@ fi
 if ! pgrep -u "$UID" -f '^/usr/lib/polkit-kde-authentication-agent-1' >/dev/null; then
  /usr/lib/polkit-kde-authentication-agent-1 >/dev/null 2>&1 &
 fi
+
+if ! pgrep -u "$UID" -f "^/usr/bin/python @HOME@/.local/bin/macos-dock$" >/dev/null; then
+ /usr/bin/python "$HOME/.local/bin/macos-dock" >/dev/null 2>&1 &
+fi

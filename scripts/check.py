@@ -10,7 +10,7 @@ import tempfile
 import tomllib
 
 root = Path(__file__).resolve().parent.parent
-for source in (root/'scripts').glob('*.py'):
+for source in list((root/'scripts').glob('*.py')) + list((root/'home/.local/bin').glob('macos-*')):
     ast.parse(source.read_text())
 for source in (root/'home').rglob('*.json*'):
     json.loads(source.read_text())
@@ -59,6 +59,11 @@ with tempfile.TemporaryDirectory(prefix='arch-rice-test-') as temporary:
     assert 'alias mine=' in (home/'.bashrc').read_text()
     assert (home/'.bashrc').read_text().count('# >>> arch-hyprland-dotfiles >>>') == 1
     assert str(home) in (home/'.config/hypr/hyprpaper.conf').read_text()
+    bar = json.loads((home/'.config/waybar/config.jsonc').read_text())
+    assert 'hyprland/workspaces' not in bar['modules-left']
+    assert 'custom/apple' in bar['modules-left']
+    assert (home/'.config/gtk-4.0/gtk.css').stat().st_size > 100000
+    assert (home/'.local/bin/macos-dock').stat().st_mode & 0o111
     for source in (root/'home').rglob('*'):
         if source.is_file() and source.suffix != '.png':
             target=home/source.relative_to(root/'home')

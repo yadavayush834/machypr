@@ -1,3 +1,2 @@
 #!/usr/bin/env bash
-cat "$HOME/.local/share/arch-setup/SHORTCUTS.txt"
-read -r _
+exec "$HOME/.local/bin/macos-menu" shortcuts
