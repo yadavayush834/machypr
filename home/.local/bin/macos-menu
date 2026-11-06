@@ -3,6 +3,7 @@ import gi,json,subprocess,sys,os,datetime,runpy
 from pathlib import Path
 gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
 from gi.repository import Gtk,Gdk,GtkLayerShell
+import cairo
 home=Path.home();kind=sys.argv[1] if len(sys.argv)>1 else 'apple'
 def run(args): subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 def local(name):return str(home/'.local/bin'/name)
@@ -127,4 +128,29 @@ def fit_popup(widget,allocation):
   margin=max(6,min(int(os.environ['MACOS_MENU_X']),screen-allocation.width-8))
   if GtkLayerShell.get_margin(win,GtkLayerShell.Edge.LEFT)!=margin:GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,margin)
 win.connect('size-allocate',fit_popup)
-win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit);win.show_all();win.set_focus(None);Gtk.main()
+# Layer surfaces do not reliably lose keyboard focus on desktop clicks.
+# Catch outside pointer presses on a transparent sibling below the popup.
+# Its input region excludes the top bar so menu switching/toggling still works.
+dismiss=Gtk.Window();dismiss.set_name('macos-menu-dismiss');dismiss.set_decorated(False);dismiss.set_app_paintable(True)
+visual=dismiss.get_screen().get_rgba_visual()
+if visual:dismiss.set_visual(visual)
+GtkLayerShell.init_for_window(dismiss);GtkLayerShell.set_namespace(dismiss,'macos-menu-dismiss')
+GtkLayerShell.set_layer(dismiss,GtkLayerShell.Layer.OVERLAY)
+GtkLayerShell.set_keyboard_mode(dismiss,GtkLayerShell.KeyboardMode.NONE)
+GtkLayerShell.set_exclusive_zone(dismiss,-1)
+for edge in (GtkLayerShell.Edge.TOP,GtkLayerShell.Edge.BOTTOM,GtkLayerShell.Edge.LEFT,GtkLayerShell.Edge.RIGHT):GtkLayerShell.set_anchor(dismiss,edge,True)
+transparent=Gtk.CssProvider();transparent.load_from_data(b'window#macos-menu-dismiss {background:transparent;border:none;box-shadow:none;}')
+dismiss.get_style_context().add_provider(transparent,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+10)
+def shape_dismiss(widget,allocation=None):
+ surface=widget.get_window()
+ if surface:
+  size=widget.get_allocation()
+  surface.input_shape_combine_region(cairo.Region(cairo.RectangleInt(0,24,size.width,max(0,size.height-24))),0,0)
+dismiss.connect('realize',shape_dismiss);dismiss.connect('size-allocate',shape_dismiss)
+dismiss.add_events(Gdk.EventMask.BUTTON_PRESS_MASK|Gdk.EventMask.TOUCH_MASK)
+def outside_press(*_):
+ Gtk.main_quit();return True
+dismiss.connect('button-press-event',outside_press);dismiss.connect('touch-event',outside_press)
+win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit)
+dismiss.show_all();win.show_all();win.set_focus(None);Gtk.main()
+

@@ -118,3 +118,5 @@ Use Apple menu → Appearance or Control Center → Appearance. `macos-appearanc
 ## Menu-bar interactions
 
 The active menu is highlighted. Click it again to close; while a menu is open, move across the left-hand menu titles to switch. Only one bar-owned popup is kept open. Terminal uses Shell and Finder exposes Go; other apps retain File/Edit/View shortcuts. Click the date for the calendar. Popups fit their actual width inside the display bounds, and long app names are ellipsized.
+
+Popups use a transparent outside-click surface below the menu. Clicking outside dismisses the popup; its input region excludes the menu bar so toggling and switching remain available. `python scripts/test-popup-desktop.py` runs an optional live-session pointer-dismiss regression check (requires installed desktop helpers).
