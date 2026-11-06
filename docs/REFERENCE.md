@@ -100,3 +100,9 @@ the active desktop. The full privileged install has not been tested on a second
 clean Arch machine.
 
 Licenses and upstream commit pins are listed in [THIRD-PARTY.md](THIRD-PARTY.md).
+
+## Battery and menu-bar reference
+
+The compact status group follows the Big Sur/Sonoma menu-bar layout. Original glyphs are bundled in MacDesktopSymbols.ttf to avoid image-loader issues in Waybar 0.15. Battery status is read from Linux power_supply: charging and fully charged on AC show a lightning badge, connected-but-not-charging shows a plug, and unplugged shows charge level. Percentage and power source appear in the live dropdown. The icon does not fake a repeating charge animation. Ethernet and Wi-Fi icons reflect the actual network link.
+
+References: [Apple battery status](https://support.apple.com/en-au/guide/mac-help/mchl173fcc57/mac), [Apple Big Sur battery screenshot](https://support.apple.com/en-us/108376), and the [Sonoma screenshot library](https://512pixels.net/projects/aqua-screenshot-library/macos-14-sonoma/).

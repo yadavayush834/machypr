@@ -13,7 +13,7 @@ for Arch Linux and Hyprland.
 
 ## The desktop
 
-- **Menu bar:** Apple menu, active application name, shortcut menus, compact status icons and right-aligned date.
+- **Menu bar:** Apple menu, active application name, shortcut menus, original vector status symbols and right-aligned date. Battery updates follow real charging/adapter states; click it for percentage, power source and charging status. Sound and Bluetooth live in Control Center.
 - **Dock:** auto-hides until you hover at the bottom edge or press `Super + Alt + D`; Finder-style file manager icon, Launchpad, browser, Terminal, Code, Preview-style PDF viewer, settings, Downloads and Trash. Running apps have indicators; clicking focuses or launches them.
 - **Appearance:** WhiteSur Dark GTK 3/4 styling, WhiteSur icons and cursors, Big Sur-style wallpaper, and Inter UI typography.
 - **Windows:** floating by default, rounded corners, shadows and desktop blur.
@@ -24,7 +24,7 @@ native macOS. Inter substitutes for Apple's San Francisco. The menu bar supplies
 shortcut actions rather than exporting every application's native menus. Linux
 apps retain their own title-bar behavior; styling varies across GTK, Qt and Electron.
 
-![Apple-style desktop menu](assets/macos-menu.png)
+![Battery status menu with power source and full-charge state](assets/macos-battery.png)
 
 ## Install
 

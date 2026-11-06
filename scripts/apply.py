@@ -83,7 +83,7 @@ def apply(root, home, desktop_only=False):
     try:
         for relative, data, mode in files:
             # PNG is binary; text templates carry the explicit @HOME@ token.
-            if relative.suffix != '.png':
+            if relative.suffix not in ('.png', '.ttf'):
                 data = data.replace(b'@HOME@', str(home).encode())
             atomic_write(home/relative, data, mode)
     except BaseException:

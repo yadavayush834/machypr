@@ -15,10 +15,10 @@
   ],
   "modules-center": [],
   "modules-right": [
-    "image#battery",
-    "image#network",
-    "image#search",
-    "image#control",
+    "custom/battery",
+    "custom/network",
+    "custom/search",
+    "custom/control",
     "clock"
   ],
   "custom/apple": {
@@ -63,28 +63,26 @@
     "tooltip": false,
     "on-click": "@HOME@/.local/bin/macos-menu help"
   },
-  "image#battery": {
-    "size": 25,
+  "custom/battery": {
     "on-click": "@HOME@/.local/bin/macos-menu battery",
     "exec": "@HOME@/.local/bin/macos-status battery",
-    "interval": 2
+    "interval": 2,
+    "return-type": "json"
   },
-  "image#network": {
-    "size": 19,
+  "custom/network": {
     "on-click": "@HOME@/.local/bin/arch-wifi",
     "exec": "@HOME@/.local/bin/macos-status network",
-    "interval": 5
+    "interval": 5,
+    "return-type": "json"
   },
-  "image#search": {
-    "size": 16,
+  "custom/search": {
     "on-click": "wofi --show drun",
-    "path": "@HOME@/.local/share/macos-desktop/icons/spotlight.svg",
-    "tooltip": false
+    "tooltip": false,
+    "format": "\ue060"
   },
-  "image#control": {
-    "size": 17,
+  "custom/control": {
     "on-click": "@HOME@/.local/bin/macos-menu control",
-    "path": "@HOME@/.local/share/macos-desktop/icons/control-center.svg",
-    "tooltip": false
+    "tooltip": false,
+    "format": "\ue061"
   }
 }

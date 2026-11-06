@@ -20,7 +20,7 @@ for group in (root/'packages').glob('*.txt'):
     assert len(names) == len(set(names)), f'Duplicate package in {group}'
     assert all(name and not any(c.isspace() for c in name) for name in names)
 for source in (root/'home').rglob('*'):
-    if source.is_file() and source.suffix != '.png':
+    if source.is_file() and source.suffix not in ('.png', '.ttf', '.pyc'):
         text = source.read_text()
         assert '/home/ayush' not in text, source
         assert 'Welcome back, Ayush' not in text, source
@@ -65,7 +65,7 @@ with tempfile.TemporaryDirectory(prefix='arch-rice-test-') as temporary:
     assert (home/'.config/gtk-4.0/gtk.css').stat().st_size > 100000
     assert (home/'.local/bin/macos-dock').stat().st_mode & 0o111
     for source in (root/'home').rglob('*'):
-        if source.is_file() and source.suffix != '.png':
+        if source.is_file() and source.suffix not in ('.png', '.ttf', '.pyc'):
             target=home/source.relative_to(root/'home')
             assert '@HOME@' not in target.read_text(), target
     if shutil.which('desktop-file-validate'):

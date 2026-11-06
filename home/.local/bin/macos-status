@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""Original vector menu-bar icons and truthful Linux power/network status."""
+import argparse
+import json
+from pathlib import Path
+
+
+def read(path, default=''):
+    try:
+        return path.read_text().strip()
+    except OSError:
+        return default
+
+
+def battery_state(root=Path('/sys/class/power_supply')):
+    supplies = sorted(root.glob('*'))
+    batteries = [p for p in supplies if read(p/'type') == 'Battery' and read(p/'present', '1') != '0']
+    if not batteries:
+        return {'available': False, 'capacity': None, 'connected': False, 'state': 'unavailable', 'label': 'No battery detected'}
+    battery = batteries[0]
+    try:
+        capacity = max(0, min(100, int(read(battery/'capacity'))))
+    except ValueError:
+        capacity = None
+    status = read(battery/'status', 'Unknown')
+    connected = any(read(p/'online') == '1' for p in supplies if read(p/'type') in ('Mains', 'USB', 'USB_C', 'USB_PD', 'Wireless'))
+    connected = connected or status == 'Charging'
+    if status == 'Charging':
+        state, label = 'charging', 'Charging'
+    elif connected and status == 'Full':
+        state, label = 'full', 'Fully Charged'
+    elif connected:
+        state, label = 'plugged', 'Not Charging'
+    elif status == 'Discharging':
+        state, label = 'discharging', 'On Battery Power'
+    else:
+        state, label = 'unknown', 'Battery status unavailable'
+    return {'available': True, 'capacity': capacity, 'connected': connected, 'state': state, 'label': label}
+
+
+def svg(body, width=24, height=16):
+    return f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">{body}</svg>'
+
+
+def battery_icon(status):
+    level = status['capacity']
+    color = '#ff6159' if level is not None and level <= 10 and not status['connected'] else '#ffffff'
+    fill_width = round(17.2 * (level or 0) / 100, 2)
+    body = '<rect x=".75" y="2.5" width="21" height="11" rx="2.6" fill="none" stroke="white" stroke-opacity=".72" stroke-width="1.2"/>'
+    body += '<path d="M23 5.6v4.8c1.6-.3 1.6-4.5 0-4.8Z" fill="white" fill-opacity=".72"/>'
+    if level is not None and fill_width > 0:
+        body += f'<rect x="2.65" y="4.35" width="{fill_width}" height="7.3" rx="1.1" fill="{color}"/>'
+    if status['state'] in ('charging', 'full'):
+        # A cut-out halo keeps the power badge legible at every charge level.
+        body += '<path d="m12.4 1.1-5 7.2h3.7l-1 6.6 5.6-8.1h-3.9Z" stroke="#25252b" stroke-width="2.1" stroke-linejoin="round" fill="white" paint-order="stroke"/>'
+    elif status['state'] == 'plugged':
+        body += '<path d="M9.5 4v3m4-3v3M8 7h7v1.5c0 2-1.4 3-3.5 3V14m0-2.5C9.4 11.5 8 10.5 8 8.5Z" fill="none" stroke="#25252b" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>'
+        body += '<path d="M9.5 4v3m4-3v3M8 7h7v1.5c0 2-1.4 3-3.5 3V14m0-2.5C9.4 11.5 8 10.5 8 8.5Z" fill="none" stroke="white" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>'
+    elif not status['available'] or level is None:
+        body += '<path d="m9 5 5 6m0-6-5 6" stroke="white" stroke-width="1.3"/>'
+    return svg(body, 25, 16)
+
+
+def network_state(root=Path('/sys/class/net')):
+    devices = [p for p in sorted(root.glob('*')) if p.name != 'lo']
+    for p in devices:
+        if read(p/'carrier') == '1' and not (p/'wireless').exists():
+            return 'ethernet', 'Ethernet connected'
+    for p in devices:
+        if (p/'wireless').exists() and read(p/'carrier') == '1':
+            return 'wifi', 'Wi-Fi connected'
+    return 'offline', 'Network disconnected'
+
+
+def network_icon(state):
+    if state == 'ethernet':
+        return svg('<path d="M4 3h16v9h-5v2H9v-2H4Z" fill="none" stroke="white" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 3v4m4-4v4m4-4v4" stroke="white" stroke-width="1.25"/>')
+    body = '<path d="M2.6 5.2a15 15 0 0 1 18.8 0M6 8.7a9.5 9.5 0 0 1 12 0M9.1 12a4.4 4.4 0 0 1 5.8 0" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="15" r="1.1" fill="white"/>'
+    if state == 'offline':
+        body = '<g opacity=".45">'+body+'</g><path d="m4 1 16 15" stroke="#25252b" stroke-width="3.8"/><path d="m4 1 16 15" stroke="white" stroke-width="1.4"/>'
+    return svg(body)
+
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('kind', choices=['battery', 'network'])
+    parser.add_argument('--json', action='store_true')
+    args = parser.parse_args()
+    if args.kind == 'battery':
+        state = battery_state()
+        if args.json:
+            print(json.dumps(state))
+            return
+        percentage = f"{state['capacity']}%" if state['capacity'] is not None else 'Unknown charge'
+        source = 'Power Adapter' if state['connected'] else 'Battery'
+        tooltip = f"Battery: {percentage} — {state['label']} · Power Source: {source}"
+        index = {'discharging':0,'unknown':0,'unavailable':0,'charging':1,'full':2,'plugged':3}[state['state']]
+        text = chr(0xe000 + index*16 + round((state['capacity'] or 0)/10))
+        css_class = 'critical' if state['capacity'] is not None and state['capacity'] <= 10 and not state['connected'] else state['state']
+    else:
+        state, tooltip = network_state()
+        text = chr(0xe050 + {'wifi':0,'ethernet':1,'offline':2}[state])
+        css_class = state
+    print(json.dumps({'text':text,'tooltip':tooltip,'class':css_class}))
+
+
+if __name__ == '__main__':
+    main()

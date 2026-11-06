@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import gi,json,subprocess,sys,os,datetime
+import gi,json,subprocess,sys,os,datetime,runpy
 from pathlib import Path
 gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
 from gi.repository import Gtk,Gdk,GtkLayerShell
@@ -13,6 +13,7 @@ def shortcut(mods,key):
  subprocess.run(['hyprctl','dispatch','hl.dsp.send_shortcut({mods='+json.dumps(mods)+',key='+json.dumps(key)+',window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 def launch(*args):return lambda:run(list(args))
 def key(mods,k):return lambda:shortcut(mods,k)
+status_module=runpy.run_path(str(home/'.local/bin/macos-status'))
 menus={
 'apple': [('About This Desktop',launch('notify-send','Desktop','WhiteSur desktop • macOS styling on Hyprland')),None,('System Settings…',lambda:show_control()),('App Store…',launch('brave','https://flathub.org')),None,('Sleep',launch('systemctl','suspend')),('Restart…',launch(local('arch-power'))),('Shut Down…',launch(local('arch-power'))),None,('Lock Screen',launch('hyprlock'))],
 'app':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Hide Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace="special:minimized",follow=false,window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL)),None,('Quit',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
@@ -32,20 +33,44 @@ if kind=='window':
    subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace=hl.get_active_workspace().addressable_name,window='+json.dumps('address:'+w['address'])+'})'],stdout=subprocess.DEVNULL)
   subprocess.run(['hyprctl','dispatch','hl.dsp.focus({window='+json.dumps('address:'+w['address'])+'})'],stdout=subprocess.DEVNULL)
  menus[kind]=[(w['title'][:60],lambda w=w:focus(w)) for w in clients]
+battery = status_module['battery_state']() if kind == 'battery' else None
 win=Gtk.Window();win.set_name('macos-menu');win.set_decorated(False);win.set_resizable(False)
 GtkLayerShell.init_for_window(win);GtkLayerShell.set_namespace(win,'macos-menu');GtkLayerShell.set_layer(win,GtkLayerShell.Layer.OVERLAY)
 GtkLayerShell.set_keyboard_mode(win,GtkLayerShell.KeyboardMode.EXCLUSIVE)
-for edge in [GtkLayerShell.Edge.TOP,GtkLayerShell.Edge.LEFT]:GtkLayerShell.set_anchor(win,edge,True)
-GtkLayerShell.set_margin(win,GtkLayerShell.Edge.TOP,27)
+GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.TOP,True)
+GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.RIGHT if kind in ('battery','control','calendar') else GtkLayerShell.Edge.LEFT,True)
+GtkLayerShell.set_margin(win,GtkLayerShell.Edge.TOP,25)
 x={'apple':8,'app':40,'file':125,'edit':170,'view':215,'window':260,'help':325}.get(kind,950)
-GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,x)
+if kind in ('battery','control','calendar'):
+ GtkLayerShell.set_margin(win,GtkLayerShell.Edge.RIGHT, {'battery':160,'control':70,'calendar':8}[kind])
+else:
+ GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,x)
 box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=1);box.set_border_width(5);win.add(box)
-for item in menus.get(kind,menus['apple']):
+if kind == 'battery':
+ content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6);content.set_border_width(8)
+ header=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=30)
+ title=Gtk.Label();title.set_markup('<b>Battery</b>');title.set_xalign(0)
+ percentage=Gtk.Label(label=(str(battery['capacity'])+'%') if battery['capacity'] is not None else 'Unknown')
+ header.pack_start(title,True,True,0);header.pack_end(percentage,False,False,0);content.pack_start(header,False,False,2)
+ source=Gtk.Label(label='Power Source: '+('Power Adapter' if battery['connected'] else 'Battery'));source.set_xalign(0)
+ state=Gtk.Label(label=battery['label']);state.set_xalign(0)
+ content.pack_start(source,False,False,0);content.pack_start(state,False,False,0)
+ content.set_size_request(265,-1);box.pack_start(content,False,False,0)
+ box.pack_start(Gtk.Separator(),False,False,5)
+ details=Gtk.Label(label='Battery status updates automatically');details.set_name('battery-note');details.set_xalign(0);details.set_margin_start(8);details.set_margin_bottom(6);box.pack_start(details,False,False,0)
+ def update_battery():
+  current=status_module['battery_state']()
+  percentage.set_text(str(current['capacity'])+'%' if current['capacity'] is not None else 'Unknown')
+  source.set_text('Power Source: '+('Power Adapter' if current['connected'] else 'Battery'))
+  state.set_text(current['label']);return True
+ from gi.repository import GLib
+ GLib.timeout_add_seconds(2,update_battery)
+for item in ([] if kind == 'battery' else menus.get(kind,menus['apple'])):
  if item is None:box.pack_start(Gtk.Separator(),False,False,4);continue
  label,action=item;button=Gtk.Button(label=label);button.get_child().set_xalign(0)
  def clicked(button,action=action):win.destroy();Gtk.main_quit();action()
  button.connect('clicked',clicked);box.pack_start(button,False,False,0)
-provider=Gtk.CssProvider();provider.load_from_data(b'window {background:rgba(38,38,42,0.98);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
+provider=Gtk.CssProvider();provider.load_from_data(b'#battery-note {font-size:11px;color:#bdbdc3;} label {font-family:Inter;font-size:13px;color:#f5f5f7;} window {background:rgba(38,38,42,0.98);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),provider,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 win.connect('key-press-event',lambda w,e:(Gtk.main_quit() or True) if e.keyval==Gdk.KEY_Escape else False)
 win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit);win.show_all();Gtk.main()

@@ -19,3 +19,5 @@ This project is not affiliated with Apple or Arch Linux.
 The older optional wallpapers retained in `home/.local/share/wallpapers` are
 original generated artwork from the earlier desktop profile. The active profile
 uses WhiteSur.png.
+
+`MacDesktopSymbols.ttf` and its source drawings are original MIT-licensed artwork, not Apple SF Symbols. Rebuild with `uv run --with fonttools python scripts/build-status-font.py`.

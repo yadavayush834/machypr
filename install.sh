@@ -116,6 +116,7 @@ mode=full
 $desktop_only && mode=desktop
 backup=$(python "$root/scripts/apply.py" "$root" "$mode")
 echo "Configuration backup: $backup"
+command -v fc-cache >/dev/null && fc-cache -f "$HOME/.local/share/fonts"
 command -v update-desktop-database >/dev/null && update-desktop-database "$HOME/.local/share/applications"
 if $activate && [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; then
  hyprctl reload
