@@ -15,6 +15,9 @@ cliphist
 brightnessctl
 playerctl
 pavucontrol
+blueman
+network-manager-applet
+adwaita-cursors
 pipewire
 pipewire-pulse
 wireplumber

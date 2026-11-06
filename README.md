@@ -196,7 +196,9 @@ available, otherwise systemd-networkd status.
 `bash scripts/check.sh` checks shell syntax, desktop files, JSON/TOML and package
 names, plus an isolated installation/restore test with a temporary home. Tests
 never install packages or alter the active desktop. GitHub Actions runs the same
-checks. The full privileged installer has not been run on a second clean Arch
+checks. The actual `--config-only --no-activate` command and its installed restore
+utility also passed locally in a temporary home with a different username. The
+full privileged installer has not been run on a second clean Arch
 machine; the source workstation's components were installed and verified locally.
 
 MIT licensed configuration and scripts. Arch branding identifies the platform;
