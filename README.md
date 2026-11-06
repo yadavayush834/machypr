@@ -32,7 +32,7 @@ apps retain their own title-bar behavior; styling varies across GTK, Qt and Elec
 
 ## Install
 
-Requires **Arch Linux x86_64, Hyprland 0.57+, internet and sudo**. Run as your
+Requires **Arch Linux x86_64, Hyprland 0.57.x, internet and sudo**. Run as your
 regular user:
 
 ```bash
@@ -70,7 +70,7 @@ preferred browser and editor separately.
 
 ## Light and dark appearance
 
-Choose **Apple menu → Appearance…** or **Control Center → Appearance…**, then select **Light**, **Dark**, or **Auto**. Changes apply live to the bar, dock, menus, Launchpad, GTK apps, terminal, notifications and supported app palettes. Auto uses Light from 7 AM to 7 PM, Dark overnight. Your choice is saved across logins. Some applications need reopening to adopt their new theme.
+Choose **Apple menu → Appearance…** or **Control Center → Appearance…**, then select **Light**, **Dark**, or **Auto**. Changes apply live to the bar, dock, menus, Launchpad, GTK apps, terminal, notifications and supported app palettes. Auto uses Light from 7 AM to 7 PM, Dark overnight. Your choice is saved across logins. Some applications need reopening to adopt their new theme. Window title bars follow the same Light/Dark choice.
 
 ![Dark appearance](assets/macos-dark.png)
 
@@ -119,3 +119,5 @@ Arch machine.
 Configuration and original helpers: [MIT](LICENSE). WhiteSur styling and wallpaper:
 [vinceliuice](https://github.com/vinceliuice/WhiteSur-gtk-theme).
 [Full upstream credits and licenses](docs/THIRD-PARTY.md).
+
+Desktop-wide traffic lights are provided by the official Hyprland **hyprbars** plugin, compiled locally against your installed headers. VS Code uses its native title bar, and Qt client decorations are disabled. Brave keeps its integrated WhiteSur controls. After upgrading Hyprland, rebuild with `bash scripts/install-window-controls.sh` and log in again; the pinned plugin source currently targets 0.57.x.

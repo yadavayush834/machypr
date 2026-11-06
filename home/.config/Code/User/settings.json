@@ -9,5 +9,7 @@
   "workbench.startupEditor": "welcomePage",
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
-  }
+  },
+  "window.titleBarStyle": "native",
+  "window.menuBarVisibility": "toggle"
 }

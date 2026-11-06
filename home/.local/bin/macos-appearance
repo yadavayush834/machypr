@@ -96,6 +96,10 @@ def apply(mode, home=None, session=True):
         command('gsettings','set','org.gnome.desktop.interface','color-scheme','prefer-dark' if dark else 'prefer-light')
         command('pkill','-USR1','-u',str(__import__('os').getuid()),'-x','kitty')
         command('dunstctl','reload')
+        command('hyprctl','repl',
+                'if hl.plugin.hyprbars then hl.config({plugin={hyprbars={'
+                'bar_color="rgb(' + surface[1:] + ')",col={text="rgb(' + fg[1:] + ')"}'
+                '}}}) end')
     return effective
 
 

@@ -46,3 +46,6 @@ libxml2
 gsettings-desktop-schemas
 python-cairo
 ffmpeg
+gcc
+make
+pkgconf

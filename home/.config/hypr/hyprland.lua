@@ -2,6 +2,7 @@
 hl.monitor({output="",mode="preferred",position="auto",scale="auto"})
 hl.env("XCURSOR_THEME", "WhiteSur-cursors")
 hl.env("XCURSOR_SIZE", "24")
+hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
 hl.config({
  general={gaps_in=5,gaps_out=10,border_size=1,resize_on_border=true,layout="dwindle",
   col={active_border={colors={"rgba(5ca9dfee)","rgba(3778b7ee)"},angle=45},inactive_border="rgba(293345aa)"}},
@@ -76,3 +77,5 @@ run("SUPER + SHIFT + 4",os.getenv("HOME").."/.local/bin/macos-screenshot region"
 run("SUPER + SHIFT + 5",os.getenv("HOME").."/.local/bin/macos-screenshot menu")
 run("SUPER + CTRL + SHIFT + 3",os.getenv("HOME").."/.local/bin/macos-screenshot screen --clipboard")
 run("SUPER + CTRL + SHIFT + 4",os.getenv("HOME").."/.local/bin/macos-screenshot region --clipboard")
+
+pcall(dofile,os.getenv('HOME')..'/.config/hypr/macos-window-bars.lua')

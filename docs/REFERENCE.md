@@ -130,3 +130,11 @@ Super+Shift+3 captures the whole desktop, Super+Shift+4 selects a rectangle, and
 ## Brave window controls
 
 The Brave launcher exposes the local theme directory read-only to Flatpak and selects GTK 3 integration. Before starting a closed browser profile, `macos-brave-theme` backs up Preferences and enables Chromium’s GTK system theme so WhiteSur renders native red/yellow/green controls. It skips profiles while their singleton lock is present, preserves other preferences, and does not change password-storage settings. Browser preference backups remain local under `~/.local/state/macos-desktop/browser-backups`. Brave picks up the selected Light/Dark GTK variant on its next launch; restart it after changing appearance if needed.
+
+## Desktop-wide window controls
+
+`macos-window-bars.lua` loads the official [hyprbars plugin](https://github.com/hyprwm/hyprland-plugins/tree/d2427d4d15b36df40468f5a58bbd67cdba19835d/hyprbars) and supplies a centered title with left-aligned traffic lights to normal application windows. Red closes, yellow moves the window to the minimized workspace (restore through the Dock), and green toggles maximization. Double-clicking the title also toggles maximization. Hover reveals the button symbols; inactive windows show gray controls. Fullscreen applications hide the title bar.
+
+The installer builds the BSD-licensed official source against installed Hyprland headers, preserving Hyprland's ABI check. Binaries are local and not committed. `scripts/install-window-controls.sh` pins source for Hyprland 0.57.x; rebuild after a compositor upgrade and log in again. A future major/minor version requires a matching source revision. Config-only installation assumes this plugin has already been built. If the binary is absent or incompatible, the configuration continues without the extra bars.
+
+VS Code uses `window.titleBarStyle: native` to avoid duplicate controls. Qt Wayland client decorations are disabled for new processes; existing applications may need reopening. Brave is excluded from the compositor bar because its GTK tab strip already contains the WhiteSur controls. Applications that deliberately draw their own controls may still require their native-title-bar setting.

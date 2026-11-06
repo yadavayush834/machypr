@@ -44,7 +44,7 @@ if $dry_run; then
   echo 'User installs: Brave (Flathub), native Microsoft VS Code, Rust stable components, Ruff, VS Code extensions.'
   $projects && echo 'Create ~/Projects/react-starter and ~/Projects/next-starter only if absent.'
  fi
- if ! $config_only; then echo 'Install pinned WhiteSur GTK, icon and cursor themes.'; fi
+ if ! $config_only; then echo 'Install pinned WhiteSur themes and compile matching Hyprland window controls.'; fi
  echo 'Back up overwritten configuration to ~/.local/state/arch-hyprland-dotfiles/backups/.'
  echo 'Apply templates below, plus a managed .bashrc block, documentation and restore utility:'
  (cd "$root/home" && find . -type f | sort)
@@ -111,6 +111,7 @@ if ! $config_only && ! $desktop_only; then
 fi
 if ! $config_only; then
  bash "$root/scripts/install-themes.sh"
+ bash "$root/scripts/install-window-controls.sh"
  python "$root/scripts/install-sounds.py"
 fi
 mode=full
