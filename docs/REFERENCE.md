@@ -106,3 +106,7 @@ Licenses and upstream commit pins are listed in [THIRD-PARTY.md](THIRD-PARTY.md)
 The frosted light bar and compact status group follow the Big Sur/Monterey layout. The default bar draws icons directly with Cairo, avoiding Waybar image-loader issues. The previous Waybar configuration remains a fallback. Battery status is read from Linux power_supply: charging and fully charged on AC show a lightning badge; active charging uses green fill, connected-but-not-charging shows a plug, and unplugged shows charge level. Percentage and power source appear in the live dropdown. The icon does not fake a repeating charge animation. Ethernet and Wi-Fi icons reflect the actual network link.
 
 References: [Apple battery status](https://support.apple.com/en-au/guide/mac-help/mchl173fcc57/mac), [Apple Big Sur battery screenshot](https://support.apple.com/en-us/108376), and the [Sonoma screenshot library](https://512pixels.net/projects/aqua-screenshot-library/macos-14-sonoma/).
+
+## Dock rendering
+
+The dock loads WhiteSur SVG artwork at 256px and draws it at logical size with Cairo, avoiding low-resolution Gtk.Image upscaling on fractional-scale screens. The shelf and shadow are drawn separately; compositor layer blur is disabled for this dock so it cannot soften the icons. Hover magnification eases between 52 and 65 logical pixels and affects nearby icons. Labels appear above icons, with dark running indicators below. Move to the bottom edge to reveal the dock, or use Super+Alt+D. The dock hides after the pointer leaves.

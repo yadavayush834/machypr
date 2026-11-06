@@ -24,6 +24,8 @@ native macOS. Inter substitutes for Apple's San Francisco. The menu bar supplies
 shortcut actions rather than exporting every application's native menus. Linux
 apps retain their own title-bar behavior; styling varies across GTK, Qt and Electron.
 
+![High-resolution dock with hover magnification](assets/macos-dock.png)
+
 ![Native Mac-style Control Center](assets/macos-control-center.png)
 
 ![Battery status menu with current power source](assets/macos-battery.png)

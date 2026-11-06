@@ -58,7 +58,7 @@ hl.gesture({fingers=3,direction="horizontal",action="workspace"})
 -- macOS desktop: freely positioned windows and translucent desktop surfaces.
 hl.window_rule({match={class=".*"},float=true,size={1040,590},center=true})
 hl.layer_rule({match={namespace="waybar"},blur=true})
-hl.layer_rule({match={namespace="macos-dock"},blur=true})
+hl.layer_rule({match={namespace="macos-dock"},blur=false})
 hl.bind("SUPER + Tab",hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-menu window"))
 
 -- Request native GTK title bars with WhiteSur traffic-light buttons.
