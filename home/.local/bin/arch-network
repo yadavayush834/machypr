@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+if systemctl is-active --quiet NetworkManager && command -v nmtui >/dev/null; then
+ exec kitty nmtui
+fi
+exec kitty sh -c 'networkctl status; printf "\nPress Enter to close. "; read -r _'

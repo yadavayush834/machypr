@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Visual Studio Code
+Comment=Code editor
+Exec=@HOME@/.local/bin/code %F
+Icon=@HOME@/.local/opt/VSCode-linux-x64/resources/app/resources/linux/code.png
+Type=Application
+Categories=Development;IDE;
+StartupWMClass=Code
+MimeType=text/plain;inode/directory;

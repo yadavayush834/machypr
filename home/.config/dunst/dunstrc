@@ -1,0 +1,25 @@
+[global]
+font = JetBrainsMono Nerd Font 10
+width = 340
+height = (0, 180)
+origin = top-right
+offset = (20, 65)
+frame_width = 2
+frame_color = "#6bb5ed"
+corner_radius = 8
+padding = 16
+horizontal_padding = 16
+separator_color = frame
+[urgency_low]
+background = "#0b101b"
+foreground = "#dce5ef"
+timeout = 4
+[urgency_normal]
+background = "#0b101b"
+foreground = "#dce5ef"
+timeout = 6
+[urgency_critical]
+background = "#0b101b"
+foreground = "#f28b9e"
+frame_color = "#f28b9e"
+timeout = 0

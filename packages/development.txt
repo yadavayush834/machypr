@@ -1,0 +1,17 @@
+base-devel
+nodejs-lts-krypton
+npm
+rustup
+python-pip
+uv
+cmake
+ninja
+gdb
+fzf
+fd
+eza
+bat
+jq
+unzip
+zip
+p7zip

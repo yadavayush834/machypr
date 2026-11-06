@@ -1,0 +1,7 @@
+# >>> arch-hyprland-dotfiles >>>
+export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
+alias ll='ls -lah --color=auto'
+alias gs='git status'
+alias ..='cd ..'
+command -v starship >/dev/null && eval "$(starship init bash)"
+# <<< arch-hyprland-dotfiles <<<

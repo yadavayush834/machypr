@@ -1,0 +1,13 @@
+name: Validate dotfiles
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install validators
+        run: sudo apt-get update && sudo apt-get install -y shellcheck desktop-file-utils
+      - name: Validate and test isolated installation/restore
+        run: bash scripts/check.sh

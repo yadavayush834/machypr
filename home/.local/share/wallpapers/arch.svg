@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2560" height="1440" viewBox="0 0 2560 1440">
+<defs><radialGradient id="bg" cx="50%" cy="45%" r="80%"><stop stop-color="#171f2a"/><stop offset=".55" stop-color="#0e131b"/><stop offset="1" stop-color="#080b10"/></radialGradient><linearGradient id="arch" x1="0" y1="0" x2=".9" y2="1"><stop stop-color="#76bce9"/><stop offset=".5" stop-color="#3493cf"/><stop offset="1" stop-color="#17628f"/></linearGradient><radialGradient id="halo"><stop stop-color="#3386bb" stop-opacity=".09"/><stop offset="1" stop-color="#3386bb" stop-opacity="0"/></radialGradient></defs>
+<path fill="url(#bg)" d="M0 0h2560v1440H0z"/><ellipse cx="1280" cy="685" rx="610" ry="570" fill="url(#halo)"/>
+<g transform="translate(1140 510) scale(.56)">
+<path fill="url(#arch)" d="M250 0c-22 55-35 91-60 144 15 16 34 34 64 54-32-13-54-27-71-42C148 229 91 338 0 500c71-41 126-66 177-76-3-13-4-27-4-41l1-3c0-61 32-108 72-108s72 47 72 108l-1 4c0 14-1 27-4 40 50 10 105 35 187 76-15-29-29-55-42-80-24-18-49-37-74-64 17 10 41 21 60 28C355 218 297 107 250 0z"/>
+</g>
+<text x="1280" y="860" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#63788c" letter-spacing="9">ARCH LINUX</text>
+</svg>

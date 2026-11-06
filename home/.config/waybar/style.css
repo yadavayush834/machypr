@@ -1,0 +1,11 @@
+* {font-family:"JetBrainsMono Nerd Font";font-size:11px;min-height:0;border:none;border-radius:0;}
+window#waybar {background:rgba(13,16,22,0.97);color:#b1b7c4;border:1px solid #252b35;border-radius:8px;}
+#custom-brand {color:#6bb5ed;padding:0 16px;font-weight:bold;}
+#workspaces button {color:#687180;background:transparent;padding:0 9px;margin:4px 1px;border-radius:4px;}
+#workspaces button.active {color:#e6f2ff;background:#223448;}
+#workspaces button:hover {background:#252c36;color:#fff;}
+#clock {color:#e2e6ed;font-weight:bold;}
+#pulseaudio,#network,#battery,#tray {padding:0 12px;}
+#battery.warning {color:#e2b782;} #battery.critical {color:#e78c93;}
+#custom-power {color:#7f8b9d;padding:0 14px;}
+tooltip {background:#11151c;border:1px solid #303a47;border-radius:6px;} tooltip label {color:#dce5ef;}

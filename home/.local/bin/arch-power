@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+choice=$(printf 'Lock
+Suspend
+Reboot
+Power off' | wofi --dmenu --height 260 --prompt 'Session') || exit 0
+case "$choice" in
+ Lock) hyprlock;;
+ Suspend) systemctl suspend;;
+ Reboot|"Power off")
+ confirm=$(printf 'Cancel
+Confirm' | wofi --dmenu --height 180 --prompt "$choice?") || exit 0
+ [[ "$confirm" = Confirm ]] || exit 0
+ if [[ "$choice" = Reboot ]]; then systemctl reboot; else systemctl poweroff; fi;;
+esac

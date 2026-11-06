@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Brave
+Comment=Web browser
+Exec=@HOME@/.local/bin/brave %U
+Icon=@HOME@/.local/share/flatpak/exports/share/icons/hicolor/scalable/apps/com.brave.Browser.svg
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;
+StartupWMClass=brave-browser

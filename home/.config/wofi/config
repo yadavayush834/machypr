@@ -1,0 +1,9 @@
+width=560
+height=420
+show=drun
+prompt=Search your workspace…
+allow_images=true
+image_size=28
+insensitive=true
+term=kitty
+key_expand=Tab

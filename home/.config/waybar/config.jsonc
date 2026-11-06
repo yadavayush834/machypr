@@ -1,0 +1,82 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 30,
+  "margin-top": 8,
+  "margin-left": 10,
+  "margin-right": 10,
+  "spacing": 0,
+  "modules-left": [
+    "custom/brand",
+    "hyprland/workspaces"
+  ],
+  "modules-center": [
+    "clock"
+  ],
+  "modules-right": [
+    "pulseaudio",
+    "network",
+    "battery",
+    "tray",
+    "custom/power"
+  ],
+  "custom/brand": {
+    "format": "\uf303  Arch Linux",
+    "on-click": "wofi --show drun",
+    "tooltip": false
+  },
+  "hyprland/workspaces": {
+    "format": "{name}",
+    "persistent-workspaces": {
+      "*": 5
+    },
+    "on-click": "activate"
+  },
+  "clock": {
+    "format": "{:%H:%M}",
+    "tooltip-format": "{:%A, %d %B %Y}"
+  },
+  "cpu": {
+    "format": "\uf4bc  {usage}%",
+    "interval": 5
+  },
+  "memory": {
+    "format": "\uefc5  {percentage}%",
+    "interval": 5
+  },
+  "pulseaudio": {
+    "format": "\uf028  {volume}%",
+    "format-muted": "\ueee8  muted",
+    "on-click": "pavucontrol"
+  },
+  "network": {
+    "format-wifi": "\uf1eb",
+    "format-ethernet": "\udb80\ude00",
+    "format-disconnected": "\udb82\udd2d",
+    "max-length": 18,
+    "on-click": "@HOME@/.local/bin/arch-network"
+  },
+  "battery": {
+    "format": "{capacity}%",
+    "format-icons": [
+      "\uf244",
+      "\uf243",
+      "\uf242",
+      "\uf241",
+      "\uf240"
+    ],
+    "format-charging": "\uf0e7 {capacity}%",
+    "states": {
+      "warning": 25,
+      "critical": 10
+    }
+  },
+  "tray": {
+    "spacing": 10
+  },
+  "custom/power": {
+    "format": "\u23fb",
+    "on-click": "@HOME@/.local/bin/arch-power",
+    "tooltip": false
+  }
+}

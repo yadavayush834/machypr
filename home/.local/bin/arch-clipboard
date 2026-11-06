@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+selection=$(cliphist list | wofi --dmenu --prompt 'Clipboard history') || exit 0
+[[ -n "$selection" ]] && printf '%s' "$selection" | cliphist decode | wl-copy

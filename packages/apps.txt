@@ -1,0 +1,7 @@
+flatpak
+kdenlive
+okular
+libreoffice-fresh
+gimp
+inkscape
+mpv
