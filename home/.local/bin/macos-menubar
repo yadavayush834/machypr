@@ -99,7 +99,7 @@ Layer.set_exclusive_zone(win,24)
 row=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL);row.set_size_request(-1,24);win.add(row)
 css=Gtk.CssProvider();css.load_from_data(b'''
 window#macos-menubar { background:rgba(244,244,247,0.84); border-bottom:1px solid rgba(0,0,0,0.14); }
-#macos-menubar button { background:transparent; border:none; border-radius:4px; box-shadow:none; text-shadow:none; min-height:0; min-width:0; margin:0; padding:0 8px; color:#19191d; }
+#macos-menubar button { background:transparent; border:none; border-radius:5px; box-shadow:none; text-shadow:none; transition:background-color 100ms ease; min-height:0; min-width:0; margin:0; padding:0 8px; color:#19191d; }
 #macos-menubar button:hover, #macos-menubar button:focus, #macos-menubar button.open { background:rgba(0,0,0,0.10); }
 #macos-menubar label { font-family:Inter; font-size:13px; font-weight:400; color:#19191d; }
 #macos-menubar .app label { font-weight:600; }
@@ -121,9 +121,9 @@ for label,kind in [('File','file'),('Edit','edit'),('View','view'),('Go','go'),(
 row.pack_start(Gtk.Box(),True,True,0)
 symbols=[]
 for kind,width in [('battery',27),('network',22),('search',22),('control',24)]:
-    b=Gtk.Button();b.get_accessible().set_name({'battery':'Battery status','network':'Network','search':'Spotlight Search','control':'Control Center'}[kind]);b.get_style_context().add_class('status');art=Symbol(kind,width);symbols.append(art);b.add(art)
+    b=Gtk.Button();b.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK);b.connect('enter-notify-event',lambda w,e,k=kind: hover_menu(w,e,k) if k!='search' else False);b.get_accessible().set_name({'battery':'Battery status','network':'Network','search':'Spotlight Search','control':'Control Center'}[kind]);b.get_style_context().add_class('status');art=Symbol(kind,width);symbols.append(art);b.add(art)
     if kind=='search':b.connect('clicked',lambda _:launch('wofi','--show','drun'))
-    elif kind=='network':b.connect('clicked',lambda _:launch(str(HOME/'.local/bin/arch-wifi')))
+    elif kind=='network':b.connect('clicked',lambda w:menu('network',w))
     else:b.connect('clicked',lambda w,kind=kind:menu(kind,w))
     row.pack_start(b,False,False,0)
 clock=button('','calendar','clock');row.pack_start(clock,False,False,0)
@@ -136,9 +136,9 @@ def update():
     effective=APPEARANCE['current']()
     if effective!=last_appearance:
         DARK=effective=='dark';INK=(.96,.96,.98) if DARK else (.10,.10,.12)
-        background='rgba(32,32,35,0.95)' if DARK else 'rgba(244,244,247,0.90)'
+        background='rgba(34,34,37,0.88)' if DARK else 'rgba(246,246,249,0.86)'
         foreground='#f5f5f7' if DARK else '#19191d'
-        appearance_css.load_from_data((f'window#macos-menubar {{background:{background};}} #macos-menubar label,#macos-menubar button {{color:{foreground};}} #macos-menubar button:hover,#macos-menubar button.open {{background:rgba(128,128,128,0.22);}} tooltip {{background:{background};color:{foreground};}}').encode())
+        appearance_css.load_from_data((f'window#macos-menubar {{background:{background};}} #macos-menubar label,#macos-menubar button {{color:{foreground};}} #macos-menubar button:hover,#macos-menubar button.open {{background:rgba(128,128,128,0.18);}} tooltip {{background:{background};color:{foreground};}}').encode())
         last_appearance=effective
     if APPEARANCE['preference']().get('applied')!=effective:
         launch(str(HOME/'.local/bin/macos-appearance'),'sync')

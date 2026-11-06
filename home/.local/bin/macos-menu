@@ -28,6 +28,7 @@ menus={
 'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch('gnome-theme-switcher')),('Lock Screen',launch('hyprlock'))],
 'shortcuts':[(label,lambda:None) for label in ['⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Launchpad','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
 'appearance':[(('✓ ' if appearance_module['preference']()['mode']==mode else '')+label,launch(local('macos-appearance'),mode)) for mode,label in [('light','Light'),('dark','Dark'),('auto','Auto (Light 7 AM–7 PM)')]],
+'network':[(status_module['network_state']()[1],lambda:None),None,('Wi-Fi Settings…',launch(local('arch-wifi'))),('Bluetooth Settings…',launch(local('arch-bluetooth')))],
 'sound-effects':[('Play Preview',launch(local('macos-sound'),'notification')),('Enable Sound Effects',launch(local('macos-sound'),'on')),('Disable Sound Effects',launch(local('macos-sound'),'off'))],
 'calendar':[(datetime.datetime.now().strftime('%A, %d %B %Y'),lambda:None)]}
 def show_control():run([local('macos-menu'),'control'])
@@ -113,11 +114,26 @@ if kind == 'battery':
   state.set_text(current['label']);return True
  from gi.repository import GLib
  GLib.timeout_add_seconds(2,update_battery)
+menu_buttons=[]
+shortcuts={
+ ('app','New Window'):'⌘ Return' if app=='kitty' else '⌃N',('file','New Window'):'⌘ Return' if app=='kitty' else '⌃N',
+ ('app','Quit'):'⌘W',('file','Close Window'):'⌘W',('file','Open…'):'⌃O',
+ ('edit','Undo'):'⌃Z',('edit','Redo'):'⇧⌃Z',('edit','Cut'):'⌃X',
+ ('edit','Copy'):'⇧⌃C' if app=='kitty' else '⌃C',('edit','Paste'):'⇧⌃V' if app=='kitty' else '⌃V',('edit','Select All'):'⌃A',
+ ('view','Zoom In'):'⌃+',('view','Zoom Out'):'⌃−',('view','Actual Size'):'⌃0',('apple','Lock Screen'):'⌘L'}
 for item in ([] if kind in ('battery','control','calendar') else menus.get(kind,menus['apple'])):
  if item is None:box.pack_start(Gtk.Separator(),False,False,4);continue
- label,action=item;button=Gtk.Button(label=label);button.get_child().set_xalign(0)
+ label,action=item
+ checked=label.startswith('✓ ')
+ if checked:label=label[2:]
+ button=Gtk.Button();button.get_style_context().add_class('menu-row');button.get_accessible().set_name(label)
+ row=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8)
+ mark=Gtk.Label(label='✓' if checked else '');mark.set_size_request(12,-1);row.pack_start(mark,False,False,0)
+ text=Gtk.Label(label=label);text.set_xalign(0);row.pack_start(text,True,True,0)
+ hint=Gtk.Label(label=shortcuts.get((kind,label),''));hint.get_style_context().add_class('shortcut');hint.set_xalign(1);row.pack_end(hint,False,False,0)
+ button.add(row)
  def clicked(button,action=action):win.destroy();Gtk.main_quit();action()
- button.connect('clicked',clicked);box.pack_start(button,False,False,0)
+ button.connect('clicked',clicked);box.pack_start(button,False,False,0);menu_buttons.append(button)
 provider=Gtk.CssProvider();provider.load_from_data(b'#battery-note {font-size:11px;color:#bdbdc3;} label {font-family:Inter;font-size:13px;color:#f5f5f7;} window {background:rgba(38,38,42,0.98);border:1px solid #77777b;border-radius:8px;color:#f5f5f7;} button {font-family:Inter;font-size:13px;min-height:0;background:transparent;color:#f5f5f7;border:0;box-shadow:none;min-width:220px;padding:3px 10px;border-radius:4px;} button:hover,button:focus {background:#0a70df;} separator {background:#525256;min-height:1px;}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),provider,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 light=Gtk.CssProvider();light.load_from_data(b'window {background:rgba(241,241,245,0.97);border:1px solid rgba(45,45,55,0.25);border-radius:7px;color:#202024;} label,button {color:#202024;font-family:Inter;font-size:13px;} button {min-width:220px;padding:3px 9px;} button:hover,button:focus {background:#0969da;color:white;} button:hover label,button:focus label {color:white;} #battery-note {color:#66666d;font-size:11px;} .control-tile {min-width:110px;min-height:37px;background:rgba(255,255,255,0.55);border-radius:8px;padding:7px;} .control-tile label {font-size:12px;} .control-tile:focus {background:rgba(255,255,255,0.55);color:#202024;} .control-tile:focus label {color:#202024;} scale trough {min-height:14px;background:#d1d1d8;border-radius:7px;} scale highlight {background:#ffffff;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:white;border:1px solid #b8b8bd;border-radius:50%;} separator {background:rgba(40,40,50,0.16);}')
@@ -125,7 +141,16 @@ if not appearance_dark:Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_d
 else:
  dark=Gtk.CssProvider();dark.load_from_data(b'.control-tile {min-width:110px;min-height:37px;background:#38383d;border-radius:8px;padding:7px;} .control-tile label {color:#f5f5f7;font-size:12px;} scale trough {min-height:14px;background:#55555c;border-radius:7px;} scale highlight {background:#f5f5f7;border-radius:7px;} scale slider {min-width:17px;min-height:17px;background:#fafafa;border-radius:50%;}')
  Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),dark,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
-win.connect('key-press-event',lambda w,e:(Gtk.main_quit() or True) if e.keyval==Gdk.KEY_Escape else False)
+def menu_key(widget,event):
+ if event.keyval==Gdk.KEY_Escape:Gtk.main_quit();return True
+ if menu_buttons and event.keyval in (Gdk.KEY_Up,Gdk.KEY_Down,Gdk.KEY_Home,Gdk.KEY_End):
+  focused=win.get_focus();index=menu_buttons.index(focused) if focused in menu_buttons else (-1 if event.keyval==Gdk.KEY_Down else 0)
+  index=0 if event.keyval==Gdk.KEY_Home else len(menu_buttons)-1 if event.keyval==Gdk.KEY_End else (index+(1 if event.keyval==Gdk.KEY_Down else -1))%len(menu_buttons)
+  menu_buttons[index].grab_focus();return True
+ return False
+rows_css=Gtk.CssProvider();rows_css.load_from_data(b'button.menu-row {min-width:250px;padding:4px 6px;border-radius:4px;} button.menu-row label {font-family:Inter;font-size:13px;} button.menu-row .shortcut {font-size:12px;opacity:0.70;} button.menu-row:hover label,button.menu-row:focus label {color:white;}')
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),rows_css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+2)
+win.connect('key-press-event',menu_key)
 def fit_popup(widget,allocation):
  if os.environ.get('MACOS_MENU_X'):
   screen=Gdk.Display.get_default().get_monitor(0).get_geometry().width
@@ -157,4 +182,3 @@ def outside_press(*_):
 dismiss.connect('button-press-event',outside_press);dismiss.connect('touch-event',outside_press)
 win.connect('focus-out-event',lambda *_:Gtk.main_quit());win.connect('destroy',Gtk.main_quit)
 dismiss.show_all();win.show_all();win.set_focus(None);Gtk.main()
-
