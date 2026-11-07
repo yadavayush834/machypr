@@ -2,6 +2,8 @@
 
 This profile changes resource scheduling and background I/O. It does not change animations, disable security mitigations, drop filesystem caches, overclock the CPU, or kill background applications.
 
+The separate [power profiles](POWER-PROFILES.md) now provide Battery Saver, Standard (Balanced), and Performance in Settings, with authenticated CPU/GPU controls. Those hardware changes have their own baseline and restore action.
+
 ## Findings on the development laptop
 
 The machine has an Intel i5-1035G1, approximately 16 GiB RAM, a 1 TB rotational disk, and existing 4 GiB zstd zram swap. The initial sample showed about 11 GiB RAM available and no sustained memory pressure, but substantial I/O stalls. CPU package temperatures repeatedly approached 95–100°C and hardware package-throttle counters increased during a 10-second sample. The fan was running. Browser GPU video-engine counters were zero, although the Intel VA-API runtime driver was present; decoding has not been declared fixed or forced with speculative browser flags.
@@ -10,7 +12,7 @@ The original boot measurement was 33.835 seconds: firmware 12.221, loader 0.826,
 
 ## Foreground CPU policy
 
-`macos-responsiveness.service` uses systemd's existing cgroup-v2 CPU weights. It listens to Hyprland focus events and raises the active app scope and its immediate app/session slice to weight 300. Original weights are recorded before each change and restored on focus changes or clean shutdown. Stale runtime state is recovered at service start. Existing higher weights are preserved. Related Flatpak browser scopes and Kitty child scopes are grouped so their work follows the application. Core session services and the user manager are never treated as application scopes.
+`macos-responsiveness.service` uses systemd's existing cgroup-v2 CPU and I/O weights. It listens to Hyprland focus events and raises the active app scope and its immediate app/session slice to CPU weight 300 and I/O weight 200 in Standard, or CPU weight 1000 and I/O weight 500 in Performance. Battery Saver uses weight 100. Original weights are recorded before each change and restored on focus changes or clean shutdown. Stale runtime state is recovered at service start. Existing higher weights are preserved. Related Flatpak browser scopes and Kitty child scopes are grouped so their work follows the application. Core session services and the user manager are never treated as application scopes.
 
 Weights allocate relative CPU time under contention; they do not cap CPU use, reserve whole cores, change CPU frequency, or speed up uncontended computation. Background audio and applications keep running. Repeated focus notifications caused by title changes are ignored, and genuine focus changes are coalesced within 200 ms to avoid a busy polling service. Runtime status contains only the current app class and units, not window titles or an activity history.
 

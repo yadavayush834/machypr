@@ -108,3 +108,6 @@ hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd('hyprctl dispatch \'hl.dsp.dpms
 -- User changes made through System Settings.
 pcall(dofile,os.getenv('HOME')..'/.config/hypr/settings-overrides.lua')
 pcall(dofile,os.getenv('HOME')..'/.config/hypr/display-settings.lua')
+
+-- Native pixels for legacy X11 apps; avoid fractional buffer stretching.
+hl.config({xwayland={force_zero_scaling=true}})

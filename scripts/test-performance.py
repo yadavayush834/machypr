@@ -28,6 +28,10 @@ class TestPerformance(unittest.TestCase):
  def test_preserve_higher_existing_weight(self):
   with tempfile.TemporaryDirectory() as directory:
    b=Fake();b.weights['app-test.scope']=800;p=m['Policy'](b,Path(directory)/'weights.json');p.focus({'app-test.scope'});self.assertEqual(b.weights['app-test.scope'],800);p.close()
+ def test_profile_priority_is_reversible(self):
+  with tempfile.TemporaryDirectory() as directory:
+   b=Fake();p=m['Policy'](b,Path(directory)/'weights.json',1000);p.focus({'app-test.scope'})
+   self.assertEqual(b.weights['app-test.scope'],1000);p.close();self.assertEqual(b.weights['app-test.scope'],100)
  def test_skip_user_manager_and_compositor(self):
   with tempfile.TemporaryDirectory() as directory:
    root=Path(directory);p=root/'42';p.mkdir();base=f'0::/user.slice/user-{os.getuid()}.slice/user@{os.getuid()}.service'

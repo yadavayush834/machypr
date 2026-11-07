@@ -69,7 +69,12 @@ The bootstrap downloads this repository into a temporary directory and runs its 
 | **Window controls** | Red closes, yellow minimizes, green maximizes; centered titles and rounded corners |
 | **System Settings** | Native searchable settings for appearance, wallpaper, Wi-Fi, Bluetooth, sound, displays, input and lock timing |
 | **Appearance** | Light, Dark or scheduled Auto, shared across desktop surfaces and supported app palettes |
-| **Control Center** | Brightness and sound sliders, Wi-Fi, Bluetooth, screen lock, appearance and sound-effect controls |
+| **Control Center** | Display and Sound panels, Wi-Fi, Bluetooth, Focus, display settings, screen lock, appearance and sound-effect controls |
+| **Codex usage** | Small ChatGPT icon; hover for allowance remaining, click for usage and reset times, right-click to refresh |
+| **Background apps** | Apps that publish tray controls appear as small menu-bar icons; click to activate, right-click for the app menu |
+| **Now Playing** | Menu-bar music controls with artwork, title, artist, elapsed time, seeking, play/pause and track navigation; supports MPRIS apps and browsers |
+| **Screen Time** | Local daily/weekly foreground usage, per-app history, hourly charts, pause/reset controls and daily reminder limits |
+| **Power profiles** | Battery Saver, Standard (Balanced), and Performance with real CPU/GPU controls, thermal feedback, and foreground CPU/I/O priority; see [details and rollback](docs/POWER-PROFILES.md) |
 | **Launchpad** | Searchable installed applications, kept ready in memory for faster repeat opens |
 | **Original wallpapers** | 22 original macOS wallpapers from Mavericks to Tahoe, downloaded locally; preview and choose in System Settings |
 | **Desktop icons** | Right-click to rename or remove a shortcut through Trash; installed apps stay intact |
@@ -79,6 +84,10 @@ The bootstrap downloads this repository into a temporary directory and runs its 
 | **Sound effects** | Notification, volume-key and screenshot feedback, with preview and enable/disable controls |
 
 ## Gallery
+
+Screen Time starts recording at installation; earlier activity cannot be recovered. It samples foreground apps every five seconds and excludes locked sessions, sleep, and idle time after 60 seconds. Data stays in `~/.local/state/macos-desktop/screen-time.sqlite3`; window titles and document names are never stored. Daily limits send notifications and do not block applications. Manage it in **System Settings → Screen Time**. The `macos-screen-time.service` user service handles recording; the idle listener is in `hypridle.conf`.
+
+The tray hosts applications that register StatusNotifier items, rather than listing every process. Apps without a tray implementation do not appear. Music controls use MPRIS and only enable actions supported by the selected player. The Codex allowance icon is separate from an application's running status.
 
 These are captures of the running desktop, using a clean demonstration terminal. The dock combines pinned everyday applications with apps from the current desktop.
 

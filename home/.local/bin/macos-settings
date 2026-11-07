@@ -12,6 +12,8 @@ import runpy
 import shutil
 import subprocess
 import sys
+sys.path.insert(0,str(Path.home()/'.local/lib'))
+import macos_screen_time as SCREEN_TIME
 import gi
 
 gi.require_version('Gtk', '3.0')
@@ -26,7 +28,8 @@ PAGES = [
  ('bluetooth','Bluetooth','bluetooth-symbolic','blue','devices pairing headphones'),
  ('network','Network','network-workgroup-symbolic','blue','ethernet vpn address dns'),
  ('battery','Battery','battery-good-symbolic','green','power charge energy low power profile'),
- ('general','General','preferences-system-symbolic','gray','about storage software update date time language login sharing backup'),
+ ('performance','Performance','utilities-system-monitor-symbolic','blue','power profiles battery saver balanced standard performance cpu turbo thermal speed'),
+ ('general','General','preferences-system-symbolic','gray','about storage ram memory usage software update date time language login sharing backup'),
  ('accessibility','Accessibility','preferences-desktop-accessibility-symbolic','blue','reduce motion animations zoom cursor'),
  ('appearance','Appearance','preferences-desktop-theme-symbolic','purple','light dark auto glass theme rounding'),
  ('menubar','Menu Bar','view-more-symbolic','gray','control center clock status'),
@@ -38,7 +41,7 @@ PAGES = [
  ('notifications','Notifications','preferences-system-notifications-symbolic','red','alerts do not disturb dunst'),
  ('sound','Sound','audio-volume-high-symbolic','red','volume output input microphone speakers mute effects'),
  ('focus','Focus','weather-clear-night-symbolic','purple','do not disturb notifications pause'),
- ('screentime','Screen Time','document-open-recent-symbolic','purple','uptime session activity'),
+ ('screentime','Screen Time','document-open-recent-symbolic','purple','usage history daily weekly app limits tracking activity'),
  ('lock','Lock Screen','system-lock-screen-symbolic','gray','password timeout automatic idle'),
  ('privacy','Privacy & Security','security-high-symbolic','blue','permissions camera microphone flatpak portal'),
  ('password','Touch ID & Password','dialog-password-symbolic','gray','login fingerprint password'),
@@ -88,10 +91,12 @@ class Settings(Gtk.Application):
         self.history_index = -1
         self.current_page = 'general'
         self.alive = True
+        self.usage_timer = None
         self.connect('shutdown', self.stop)
 
     def stop(self, *_):
         self.alive = False
+        self.stop_usage()
         self.pool.shutdown(wait=False, cancel_futures=True)
         self.image_pool.shutdown(wait=False, cancel_futures=True)
 
@@ -135,7 +140,7 @@ class Settings(Gtk.Application):
             content=box(False,9);content.set_margin_start(10);content.set_margin_end(8);content.set_margin_top(4);content.set_margin_bottom(4)
             tile=Gtk.EventBox();tile.get_style_context().add_class('nav-icon');tile.get_style_context().add_class(color);tile.add(icon(image,17))
             content.pack_start(tile,False,False,0);content.pack_start(label(title),True,True,0);row.add(content)
-            if index in (0,4,13,17,22,26):row.set_margin_top(10)
+            if index in (0,5,14,18,23,27):row.set_margin_top(10)
             self.nav.add(row);self.nav_rows[key]=row
         self.nav.set_filter_func(lambda row:all(word in row.keywords for word in self.search.get_text().casefold().split()))
         self.nav.connect('row-activated',lambda _,row:self.open_page(row.key))
@@ -314,6 +319,7 @@ class Settings(Gtk.Application):
 
     def open_page(self,page,remember=True):
         if not self.window:return
+        self.stop_usage()
         if remember and (self.history_index<0 or self.history[self.history_index]!=page):
             self.history=self.history[:self.history_index+1]+[page];self.history_index=len(self.history)-1
         # Opening, refreshing and history navigation all start at the page top.
@@ -351,11 +357,13 @@ class Settings(Gtk.Application):
 
     def page_general(self):
         self.content.pack_start(label('Manage this computer, software, storage and everyday system preferences.','muted',True),False,False,0)
+        self.live_usage()
         group=self.section()
         for title,detail,method in [('About','Hardware and software information',self.about),('Software Update','Arch packages and Flatpak applications',self.updates),('Storage','Available space and home folder',self.storage),('Date & Time','Time zone and network time',self.datetime_page),('Language & Region','System locale and keyboard layout',self.language),('Login Items & Extensions','Apps and services that start at login',self.login_items),('Sharing','Network services and computer name',self.sharing),('Time Machine','Backups and restore on Linux',self.backups)]:
             self.action(group,title,lambda b,m=method:self.subpage(m),detail,button='›')
 
     def subpage(self,method):
+        self.stop_usage();self.generation+=1
         for child in self.content.get_children():self.content.remove(child)
         control=Gtk.Button(label='Back to General');control.set_halign(Gtk.Align.START);control.connect('clicked',lambda *_:self.open_page('general',False));self.content.pack_start(control,False,False,0)
         method();self.show()
@@ -365,6 +373,46 @@ class Settings(Gtk.Application):
         def render(info):
             group=self.section();self.info(group,'Computer Name',info['hostname']);self.info(group,'Operating System',info['system']);self.info(group,'Kernel',info['kernel']);self.info(group,'Processor',info['cpu']);self.info(group,'Memory',str(info['memory'])+' GB');self.show()
         self.work(M['system_info'],render)
+        self.live_usage()
+
+    def stop_usage(self):
+        if self.usage_timer is not None:
+            GLib.source_remove(self.usage_timer);self.usage_timer=None
+
+    def live_usage(self,storage_only=False):
+        self.stop_usage()
+        group=self.section('Live Usage')
+        fields={}
+        for key,title in ([('storage','Storage')] if storage_only else [('ram','RAM'),('storage','Storage')]):
+            content=box(True,5);content.set_margin_start(14);content.set_margin_end(14);content.set_margin_top(10);content.set_margin_bottom(10)
+            content.pack_start(label(title),False,False,0)
+            summary=label('Reading current usage…',wrap=True);content.pack_start(summary,False,False,0)
+            exact=label('','muted',True);exact.set_selectable(True);content.pack_start(exact,False,False,0)
+            group.pack_start(content,False,False,0);fields[key]=(summary,exact)
+        explanation='Storage covers the filesystem containing your home folder.'
+        if not storage_only:explanation='RAM used = total − available (reclaimable cache is available). '+explanation
+        note=label('Refreshes every second. '+explanation,'muted',True)
+        self.content.pack_start(note,False,False,0)
+        generation=self.generation;busy=[False]
+        def read():
+            try:return M['resource_usage'](),None
+            except Exception as error:return None,str(error)
+        def render(result):
+            busy[0]=False
+            data,error=result
+            for key,(summary,exact) in fields.items():
+                if error:
+                    summary.set_text('Current usage unavailable');exact.set_text(error);continue
+                values=data[key];used,total,available=(values[k] for k in ('used','total','available'))
+                percent=100*used/total if total else 0
+                summary.set_text(f'{used/2**30:.3f} / {total/2**30:.3f} GiB used · {percent:.2f}%')
+                exact.set_text(f'Used: {used:,} bytes\nAvailable: {available:,} bytes\nTotal: {total:,} bytes')
+                if key=='storage':summary.set_tooltip_text(data['storage_path'])
+        def refresh():
+            if not self.alive or generation!=self.generation:return False
+            if not busy[0]:busy[0]=True;self.work(read,render)
+            return True
+        refresh();self.usage_timer=GLib.timeout_add_seconds(1,refresh)
 
     def updates(self):
         self.content.pack_start(label('Software Update','page-title'),False,False,0)
@@ -374,11 +422,8 @@ class Settings(Gtk.Application):
 
     def storage(self):
         self.content.pack_start(label('Storage','page-title'),False,False,0)
-        def render(info):
-            disk=info['disk'];group=self.section();self.info(group,'Capacity',f'{disk.total/2**30:.1f} GB');self.info(group,'Available',f'{disk.free/2**30:.1f} GB')
-            progress=Gtk.ProgressBar();progress.set_fraction(disk.used/disk.total);progress.set_text(f'{disk.used/2**30:.1f} GB used');progress.set_show_text(True);self.content.pack_start(progress,False,False,0)
-            self.external(group,'Manage Files',['dolphin',str(HOME)]);self.external(group,'Trash',['dolphin','trash:/']);self.show()
-        self.work(M['system_info'],render)
+        self.live_usage(storage_only=True)
+        group=self.section();self.external(group,'Manage Files',['dolphin',str(HOME)]);self.external(group,'Trash',['dolphin','trash:/'])
 
     def datetime_page(self):
         self.content.pack_start(label('Date & Time','page-title'),False,False,0)
@@ -535,12 +580,68 @@ class Settings(Gtk.Application):
         self.info(group,'Battery Level',str(data['capacity'])+'%' if data['capacity'] is not None else 'Not available');self.info(group,'Power Source',data['label'])
         if data['capacity'] is not None:
             progress=Gtk.ProgressBar();progress.set_fraction(data['capacity']/100);self.content.pack_start(progress,False,False,0)
-        if shutil.which('powerprofilesctl'):
-            def render(profile):
-                self.choice(group,'Energy Mode',[('power-saver','Low Power'),('balanced','Automatic'),('performance','High Performance')],profile,lambda v:M['command']('powerprofilesctl','set',v));self.show()
-            self.work(lambda:M['command']('powerprofilesctl','get'),render)
-        else:self.row(group,'Energy Modes','Power Profiles Daemon is not installed. Battery status is read directly from this computer.')
+        self.action(group,'Power Profile',lambda *_:self.open_page('performance'),'Battery Saver, Standard (Balanced), and Performance.',button='Configure…')
         self.action(group,'Lock Screen Settings',lambda *_:self.open_page('lock'))
+
+    def page_performance(self):
+        self.content.pack_start(label('Choose how this computer balances speed, battery life and heat. Profiles change CPU policy and foreground CPU/I/O priorities.','muted',True),False,False,0)
+        profiles=self.section('Power Profile');buttons={};applying=[False]
+        descriptions={
+            'battery-saver':('Battery Saver','Lower CPU/GPU ceilings, turbo off, energy-first CPU policy. Optional cache warmup is deferred.'),
+            'standard':('Standard (Balanced)','Responsive everyday use with adaptive CPU frequency, turbo available and normal hardware thermal management.'),
+            'performance':('Performance','Performance-first CPU policy, turbo, dynamic boost and full supported GPU ceiling. Highest foreground CPU/I/O priority. More heat and fan noise are expected.'),
+        }
+        def change(profile):
+            applying[0]=True
+            for button in buttons.values():button.set_sensitive(False)
+            def apply():
+                try:return M['command'](BIN/'macos-power-profile','--set',profile,timeout=180),None
+                except Exception as error:return None,str(error)
+            def done(result):
+                applying[0]=False
+                if result[1]:self.error(result[1])
+                refresh()
+            self.work(apply,done)
+        for key,(title,detail) in descriptions.items():
+            buttons[key]=self.action(profiles,title,lambda _,key=key:change(key),detail,button='Select')
+        setup=self.section('Hardware Controls')
+        message=label('Reading applied settings…','muted',True);setup.pack_start(message,False,False,12)
+        install=self.action(setup,'Enable Hardware Profiles',lambda button:self.work(lambda:M['command'](BIN/'macos-power-profile','--install',timeout=180),lambda _:self.open_page('performance',False),button),'Administrator authentication installs the CPU/GPU controller and saves your original hardware settings.',button='Enable…')
+        telemetry=self.section('Applied Settings');values={}
+        for name in ('Active Profile','CPU Policy','Energy Preference','Turbo','Dynamic Boost','CPU Performance Ceiling','CPU Temperature','Controller','Foreground Scheduling'):
+            value=label('Reading…','muted');value.set_line_wrap(True);value.set_max_width_chars(28);value.set_xalign(1);self.row(telemetry,name,control=value);values[name]=value
+        self.content.pack_start(label('Performance uses the hardware’s supported limits. Thermal feedback lowers the CPU ceiling when cooling is saturated and restores it as temperatures fall. It does not change animations. RAM overclocking and unlocked CPU ratios are not available on this laptop.','muted',True),False,False,0)
+        restore=self.section()
+        self.action(restore,'Restore Original Hardware Settings',lambda button:self.work(lambda:M['command'](BIN/'macos-power-profile','--restore',timeout=180),lambda _:self.open_page('performance',False),button),'Stops the profile controller and restores the saved CPU/GPU values.',button='Restore…')
+        generation=self.generation;busy=[False]
+        def read():
+            data=json.loads(M['command'](BIN/'macos-power-profile','--status'))
+            data['service']=subprocess.run(['systemctl','is-active','--quiet','macos-power-profiles.service'],timeout=3).returncode==0
+            path=Path(os.environ.get('XDG_RUNTIME_DIR',f'/run/user/{os.getuid()}'))/'macos-responsiveness/status.json'
+            try:data['foreground']=json.loads(path.read_text())
+            except (OSError,ValueError):data['foreground']={}
+            return data
+        def render(data):
+            busy[0]=False;profile=data['selected']
+            for key,button in buttons.items():button.set_label('Selected' if key==profile else 'Select');button.set_sensitive(not applying[0] and data['installed'] and data['supported'] and key!=profile)
+            install.set_sensitive(data['supported']);install.set_label('Reinstall…' if data['installed'] else 'Enable…')
+            message.set_text(('Hardware profiles enabled. Switching profiles requests administrator authentication.' if data['installed'] else 'Hardware profiles need administrator authentication before CPU/GPU settings can change.') if data['supported'] else 'These hardware profiles require active Intel P-state support; this machine uses another driver.')
+            policy=data['policies'];governors=sorted({str(p['governor']) for p in policy});epp=sorted({str(p['epp']) for p in policy})
+            values['Active Profile'].set_text(descriptions[profile][0] if profile in descriptions else 'Current system settings')
+            values['CPU Policy'].set_text(', '.join(governors));values['Energy Preference'].set_text(', '.join(epp))
+            values['Turbo'].set_text('Enabled' if data['turbo'] else 'Disabled');values['Dynamic Boost'].set_text('Enabled' if data['dynamic_boost']=='1' else 'Disabled' if data['dynamic_boost']=='0' else 'Not supported')
+            values['CPU Performance Ceiling'].set_text(str(data['cpu_limit_percent'])+'%');values['CPU Temperature'].set_text(f"{data['temperature']:.1f}°C" if data['temperature'] is not None else 'Unavailable')
+            report=data['controller'];fresh=time_now()-report.get('updated',0)<15
+            values['Controller'].set_text(report.get('error') or ('Running' if data['service'] and fresh else 'Stopped'))
+            fg=data['foreground'];values['Foreground Scheduling'].set_text(f"CPU weight {fg.get('cpu_weight',300)} · I/O weight {fg.get('io_weight',100)}" if fg.get('running') else 'Priority service stopped')
+        def time_now():
+            import time
+            return time.time()
+        def refresh():
+            if not self.alive or generation!=self.generation:return False
+            if not busy[0] and not applying[0]:busy[0]=True;self.work(read,render)
+            return True
+        refresh();self.usage_timer=GLib.timeout_add_seconds(3,refresh)
 
     def page_sound(self):
         group=self.section('Output')
@@ -685,9 +786,77 @@ class Settings(Gtk.Application):
         self.row(group,'Calls and Messages','Do Not Disturb controls desktop notifications. Individual apps manage their own calls and alerts.')
 
     def page_screentime(self):
-        group=self.section();uptime=float(Path('/proc/uptime').read_text().split()[0]);self.info(group,'Time Since Startup',str(datetime.timedelta(seconds=int(uptime))))
-        self.row(group,'App Usage & Limits','Per-app usage history and Apple Screen Time are not available on this Linux desktop. No activity tracking is enabled.')
-        self.external(group,'Running Applications',['kitty','top'])
+        S=SCREEN_TIME;days=getattr(self,'screen_days',1);offset=getattr(self,'screen_offset',0)
+        controls=self.section()
+        def period(value):
+            self.screen_days=int(value);self.screen_offset=0;self.open_page('screentime',False)
+        view=Gtk.ComboBoxText();view.append('1','Day');view.append('7','Week');view.set_active_id(str(days))
+        view.connect('changed',lambda widget:period(widget.get_active_id()))
+        self.row(controls,'View',control=view)
+        navigation=box(False,8)
+        def move(delta):
+            self.screen_offset=max(0,offset+delta*days);self.open_page('screentime',False)
+        previous=Gtk.Button(label='Previous');previous.connect('clicked',lambda *_:move(1));navigation.pack_start(previous,False,False,0)
+        next_button=Gtk.Button(label='Next');next_button.set_sensitive(offset>0);next_button.connect('clicked',lambda *_:move(-1));navigation.pack_start(next_button,False,False,0)
+        self.content.pack_start(navigation,False,False,0)
+        date_label=label('Loading history…','muted');self.content.pack_start(date_label,False,False,0)
+        total=label('','page-title');self.content.pack_start(total,False,False,0)
+        chart=Gtk.DrawingArea();chart.set_size_request(-1,130);chart_values=[[]]
+        def draw(widget,cr):
+            values=chart_values[0]
+            if not values:return False
+            width=widget.get_allocated_width();height=widget.get_allocated_height();maximum=max(60,max(v for _,v in values))
+            slot=width/len(values)
+            for index,(caption,value) in enumerate(values):
+                bar=(height-30)*value/maximum
+                cr.set_source_rgb(.12,.49,.91);cr.rectangle(index*slot+4,height-25-bar,max(2,slot-8),bar);cr.fill()
+                cr.set_source_rgb(*((.75,.75,.8) if self.theme_state=='dark' else (.3,.3,.35)))
+                cr.set_font_size(10);cr.move_to(index*slot+3,height-8);cr.show_text(caption)
+            return False
+        chart.connect('draw',draw);chart.get_accessible().set_name('Screen Time usage chart');self.content.pack_start(chart,False,False,0)
+        app_group=self.section('App Usage');app_rows={};app_empty=label('No usage recorded for this period. History starts when tracking is enabled.','muted',True);app_group.pack_start(app_empty,False,False,12)
+        preferences=self.section('Tracking')
+        pause=Gtk.Switch();self.row(preferences,'Pause Tracking','History stays on this computer. Only app identifiers and durations are saved.',pause)
+        pause_handler=pause.connect('state-set',lambda widget,value:(self.work(lambda:S.configure('paused',value)),False)[1])
+        state=label('Checking tracking service…','muted',True);self.content.pack_start(state,False,False,0)
+        self.content.pack_start(label('Idle time after 60 seconds, locked time and sleep are excluded. Daily limits send a reminder; apps remain usable. App totals count foreground use, not background processes.','muted',True),False,False,0)
+        def clear_history(_):
+            dialog=Gtk.MessageDialog(transient_for=self.window,modal=True,message_type=Gtk.MessageType.QUESTION,buttons=Gtk.ButtonsType.OK_CANCEL,text='Clear Screen Time history?')
+            dialog.format_secondary_text('All recorded app usage will be deleted. Your tracking preferences and daily reminders are kept.')
+            response=dialog.run();dialog.destroy()
+            if response==Gtk.ResponseType.OK:self.work(S.clear,lambda _:self.open_page('screentime',False))
+        self.action(preferences,'Clear Usage History',clear_history,button='Clear…')
+        generation=self.generation;busy=[False]
+        def read():
+            data=S.summary(days,offset)
+            data['service']=subprocess.run(['systemctl','--user','is-active','--quiet','macos-screen-time.service'],timeout=3).returncode==0
+            return data
+        def render(data):
+            busy[0]=False;date_label.set_text(data['start'] if days==1 else data['start']+' – '+data['end'])
+            total.set_text(S.duration(data['total'])+' active use')
+            chart_values[0]=[(f'{hour:02}',data['hours'].get(hour,0)) for hour in range(24)] if days==1 else [(datetime.date.fromisoformat(day).strftime('%a'),data['daily'].get(day,0)) for day in [(datetime.date.fromisoformat(data['start'])+datetime.timedelta(days=i)).isoformat() for i in range(7)]]
+            chart.queue_draw();pause.handler_block(pause_handler);pause.set_active(data['paused']);pause.handler_unblock(pause_handler)
+            state.set_text(('Tracking paused' if data['paused'] else 'Tracking active') if data['service'] else 'Tracking service is stopped. Reopen your desktop session or start macos-screen-time.service.')
+            current={app for app,_ in data['apps']}
+            for app in set(app_rows)-current:
+                app_group.remove(app_rows.pop(app)[0])
+            app_empty.set_visible(not data['apps'])
+            for app,seconds in data['apps']:
+                if app not in app_rows:
+                    value=label('','muted');control=box(False,8);control.pack_start(value,False,False,0)
+                    limit=Gtk.SpinButton.new_with_range(0,1440,5);limit.set_value(data['limits'].get(app,0));limit.set_tooltip_text('Daily reminder in minutes; 0 disables it.');limit.get_accessible().set_name(app+' daily reminder in minutes')
+                    def changed(widget,app=app):
+                        minutes=widget.get_value_as_int();self.work(lambda:S.set_limit(app,minutes))
+                    limit.connect('value-changed',changed)
+                    control.pack_start(limit,False,False,0)
+                    row=self.row(app_group,app,'Daily reminder (minutes, 0 = off)',control);app_rows[app]=(row,value)
+                app_rows[app][1].set_text(S.duration(seconds))
+            self.show();app_empty.set_visible(not data['apps'])
+        def refresh():
+            if not self.alive or generation!=self.generation:return False
+            if not busy[0]:busy[0]=True;self.work(read,render)
+            return True
+        refresh();self.usage_timer=GLib.timeout_add_seconds(5,refresh)
 
     def page_privacy(self):
         group=self.section('Application Permissions');self.row(group,'Camera, Microphone & Screen Recording','Sandboxed applications request access through desktop portals. Review Flatpak overrides with the permission editor when installed.')
@@ -719,7 +888,7 @@ class Settings(Gtk.Application):
         group=self.section();self.external(group,'Open Spotlight',[str(BIN/'macos-spotlight')]);self.row(group,'Search','Press Super + Space to search installed applications. Settings search is available here with Ctrl + F.');self.external(group,'Application Shortcuts',['dolphin',str(HOME/'.local/share/applications')])
 
     def page_menubar(self):
-        group=self.section();self.row(group,'Control Center','Sound, Wi-Fi, Bluetooth, brightness and appearance are available from the menu bar.');self.external(group,'Open Control Center',[str(BIN/'macos-menu'),'control']);self.action(group,'Sound Settings',lambda *_:self.open_page('sound'));self.action(group,'Wi-Fi Settings',lambda *_:self.open_page('wifi'));self.action(group,'Battery Settings',lambda *_:self.open_page('battery'))
+        group=self.section();self.row(group,'Control Center','Sound, Wi-Fi, Bluetooth, brightness and appearance are available from the menu bar.');self.external(group,'Open Control Center',[str(BIN/'macos-menu'),'control']);self.external(group,'Now Playing',[str(BIN/'macos-menu'),'media']);self.row(group,'Background Apps','Apps that provide tray controls appear automatically. Click an icon to activate the app; right-click for its menu.');self.action(group,'Sound Settings',lambda *_:self.open_page('sound'));self.action(group,'Wi-Fi Settings',lambda *_:self.open_page('wifi'));self.action(group,'Battery Settings',lambda *_:self.open_page('battery'))
 
     def unavailable(self,title,detail,actions=()):
         group=self.section();self.row(group,title,detail)

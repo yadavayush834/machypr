@@ -2,13 +2,17 @@
 """Compact, frosted macOS-style menu bar with native Cairo status artwork."""
 from concurrent.futures import ThreadPoolExecutor
 import datetime
+import html
 import os
 import json
 import math
 from pathlib import Path
 import runpy
 import subprocess
+import sys
 import gi
+sys.path.insert(0,str(Path.home()/'.local/lib'))
+from macos_tray import Tray
 
 gi.require_version('Gtk','3.0')
 gi.require_version('GtkLayerShell','0.1')
@@ -26,6 +30,10 @@ battery_snapshot=STATUS['battery_state']()
 network_snapshot=STATUS['network_state']()
 executor=ThreadPoolExecutor(max_workers=1)
 active_request=None
+usage_executor=ThreadPoolExecutor(max_workers=1)
+usage_request=None
+try:USAGE=runpy.run_path(str(HOME/'.local/share/codex-usage/usage.py'))
+except OSError:USAGE=None
 
 def launch(*args):
     subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
@@ -149,13 +157,52 @@ app_menus={}
 for label,kind in [('File','file'),('Edit','edit'),('View','view'),('Go','go'),('Window','window'),('Help','help')]:
     item=button(label,kind);app_menus[kind]=item;row.pack_start(item,False,False,0)
 row.pack_start(Gtk.Box(),True,True,0)
+tray_box=Gtk.Box(spacing=0);row.pack_start(tray_box,False,False,0)
+tray=Tray(tray_box)
+music=button('','media','status');music.remove(music.get_child())
+music_image=Gtk.Image.new_from_icon_name('media-playback-start-symbolic',Gtk.IconSize.MENU);music_image.set_pixel_size(16);music.add(music_image)
+music.set_tooltip_text('Now Playing');music.get_accessible().set_name('Now Playing');row.pack_start(music,False,False,0)
 symbols=[]
 for kind,width in [('battery',26),('network',22),('search',22),('control',22)]:
+    if kind=='search':
+        for image,title,command in [('bluetooth-symbolic','Bluetooth',['arch-bluetooth']),('audio-volume-high-symbolic','Sound',['pavucontrol'])]:
+            status=Gtk.Button();status.get_style_context().add_class('status')
+            art=Gtk.Image.new_from_icon_name(image,Gtk.IconSize.MENU);art.set_pixel_size(15);status.add(art)
+            status.set_tooltip_text(title);status.get_accessible().set_name(title)
+            status.connect('clicked',lambda _,command=command:launch(str(HOME/'.local/bin'/command[0])) if command[0]=='arch-bluetooth' else launch(*command))
+            row.pack_start(status,False,False,0)
     b=Gtk.Button();b.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK);b.connect('enter-notify-event',lambda w,e,k=kind: hover_menu(w,e,k) if k!='search' else False);b.get_accessible().set_name({'battery':'Battery status','network':'Network','search':'Spotlight Search','control':'Control Center'}[kind]);b.get_style_context().add_class('status');art=Symbol(kind,width);symbols.append(art);b.add(art)
     if kind=='search':b.connect('clicked',lambda _:launch(str(HOME/'.local/bin/macos-spotlight')))
     elif kind=='network':b.connect('clicked',lambda w:menu('network',w))
     else:b.connect('clicked',lambda w,kind=kind:menu(kind,w))
     row.pack_start(b,False,False,0)
+codex=button('','codex','status');codex.remove(codex.get_child())
+Gtk.IconTheme.get_default().append_search_path(str(HOME/'.local/share/macos-desktop/icons'))
+codex_icon=Gtk.Image.new_from_icon_name('codex-symbolic',Gtk.IconSize.MENU);codex_icon.set_pixel_size(16)
+codex.add(codex_icon);codex.set_tooltip_text('Reading Codex usage…')
+codex.get_accessible().set_name('Codex usage');row.pack_start(codex,False,False,0)
+def refresh_usage(force=False):
+    global usage_request
+    if usage_request is None and USAGE:
+        usage_request=usage_executor.submit(lambda:USAGE['waybar'](USAGE['snapshot'](force=force)))
+    elif not USAGE:
+        codex.set_tooltip_text('Codex usage reader is not installed.')
+    return True
+def show_usage():
+    global usage_request
+    if usage_request is not None and usage_request.done():
+        try:
+            data=usage_request.result()
+            codex.set_tooltip_text(html.unescape(data['tooltip']))
+        except Exception:
+            codex.set_tooltip_text('Usage unavailable. Click to retry.')
+        usage_request=None
+    return True
+def usage_press(widget,event):
+    if event.button==3:refresh_usage(True);return True
+    return False
+codex.connect('button-press-event',usage_press)
+GLib.timeout_add_seconds(60,refresh_usage);GLib.timeout_add(250,show_usage);refresh_usage()
 clock=button('','calendar','clock');row.pack_start(clock,False,False,0)
 names={'macos-settings':'System Settings','kitty':'Terminal','brave-browser':'Brave','code':'Visual Studio Code','org.kde.dolphin':'Finder','org.kde.okular':'Preview','org.pulseaudio.pavucontrol':'Sound'}
 appearance_css=Gtk.CssProvider()
@@ -168,7 +215,7 @@ def update():
         DARK=effective=='dark';INK=(.96,.96,.98) if DARK else (.10,.10,.12)
         background='rgba(25,25,28,0.68)' if DARK else 'rgba(250,250,252,0.64)'
         foreground='#f5f5f7' if DARK else '#19191d'
-        appearance_css.load_from_data((f'window#macos-menubar {{background:{background};}} #macos-menubar label,#macos-menubar button {{color:{foreground};}} #macos-menubar button:hover,#macos-menubar button.open {{background:rgba(128,128,128,0.18);}} tooltip {{background:{background};color:{foreground};}}').encode())
+        appearance_css.load_from_data((f'window#macos-menubar {{background:{background};}} #macos-menubar label,#macos-menubar button,#macos-menubar image {{color:{foreground};}} #macos-menubar button:hover,#macos-menubar button.open {{background:rgba(128,128,128,0.18);}} tooltip {{background:{background};color:{foreground};}}').encode())
         last_appearance=effective
     if APPEARANCE['preference']().get('applied')!=effective:
         launch(str(HOME/'.local/bin/macos-appearance'),'sync')
@@ -217,7 +264,7 @@ def sample_status():
     return True
 
 def shutdown(*_):
-    dismiss_popup();executor.shutdown(wait=False,cancel_futures=True);Gtk.main_quit()
+    dismiss_popup();tray.stop();executor.shutdown(wait=False,cancel_futures=True);usage_executor.shutdown(wait=False,cancel_futures=True);Gtk.main_quit()
 
 GLib.timeout_add(250,update_active);GLib.timeout_add_seconds(5,sample_status)
 GLib.timeout_add_seconds(1,update);win.show_all();update();update_active()

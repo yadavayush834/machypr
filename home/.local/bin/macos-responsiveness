@@ -36,8 +36,9 @@ def related_units(unit,all_units):
 
 
 class Policy:
-    def __init__(self,backend,state):
+    def __init__(self,backend,state,weight=300):
         self.backend=backend;self.state=Path(state);self.original={};self.current=set();self.changes=0
+        self.weight=weight
         try:stale=json.loads(self.state.read_text())
         except (OSError,ValueError):stale={}
         for unit,weight in stale.items():
@@ -60,7 +61,7 @@ class Policy:
             try:
                 weight=self.backend.get(unit)
                 self.original[unit]=weight;self.save()
-                self.backend.set(unit,max(weight,300));self.changes+=1
+                self.backend.set(unit,max(weight,self.weight));self.changes+=1
             except Exception:self.original.pop(unit,None)
         self.current=units & set(self.original);self.save()
 
@@ -70,7 +71,8 @@ class Policy:
 
 
 class Systemd:
-    def __init__(self):
+    def __init__(self,property_name='CPUWeight'):
+        self.property_name=property_name
         from gi.repository import Gio,GLib
         self.Gio=Gio;self.GLib=GLib;self.bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
     def call(self,method,args=None):
@@ -80,10 +82,16 @@ class Systemd:
         obj=self.call('GetUnit',self.GLib.Variant('(s)',(unit,)))[0]
         kind='Scope' if unit.endswith('.scope') else 'Slice' if unit.endswith('.slice') else 'Service'
         interface='org.freedesktop.systemd1.'+kind
-        value=self.bus.call_sync('org.freedesktop.systemd1',obj,'org.freedesktop.DBus.Properties','Get',self.GLib.Variant('(ss)',(interface,'CPUWeight')),None,self.Gio.DBusCallFlags.NONE,3000,None).unpack()[0]
+        value=self.bus.call_sync('org.freedesktop.systemd1',obj,'org.freedesktop.DBus.Properties','Get',self.GLib.Variant('(ss)',(interface,self.property_name)),None,self.Gio.DBusCallFlags.NONE,3000,None).unpack()[0]
         return 100 if int(value)==2**64-1 else int(value)
     def set(self,unit,weight):
-        self.call('SetUnitProperties',self.GLib.Variant('(sba(sv))',(unit,True,[('CPUWeight',self.GLib.Variant('t',weight))])))
+        self.call('SetUnitProperties',self.GLib.Variant('(sba(sv))',(unit,True,[(self.property_name,self.GLib.Variant('t',weight))])))
+
+
+def power_profile():
+    try:profile=json.loads(Path('/var/lib/macos-power-profiles/selected.json').read_text()).get('profile')
+    except (OSError,ValueError):profile='standard'
+    return profile if profile in ('battery-saver','standard','performance') else 'standard'
 
 
 def active(signature):
@@ -103,7 +111,8 @@ def main():
     runtime.mkdir(parents=True,exist_ok=True)
     signature=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
     if not signature:raise RuntimeError('The Hyprland session environment has not been imported.')
-    backend=Systemd();policy=Policy(backend,runtime/'weights.json');running=[True]
+    backend=Systemd();policy=Policy(backend,runtime/'weights.json');io_policy=Policy(Systemd('IOWeight'),runtime/'io-weights.json',200);running=[True]
+    last_profile=None;background_original=None
     signal.signal(signal.SIGTERM,lambda *_:running.__setitem__(0,False));signal.signal(signal.SIGINT,lambda *_:running.__setitem__(0,False))
     last_focus=None;last_address=b'';last_poll=0;last_refresh=0;events=None;buffer=b''
     try:
@@ -141,6 +150,14 @@ def main():
                 focus=(pid,window.get('class',''))
                 if focus==last_focus and not periodic:continue
                 last_focus=focus
+                profile=power_profile()
+                if profile!=last_profile:
+                    policy.close();io_policy.close()
+                    policy.weight={'battery-saver':100,'standard':300,'performance':1000}[profile]
+                    io_policy.weight={'battery-saver':100,'standard':200,'performance':500}[profile]
+                    if background_original is None:background_original=backend.get('background.slice')
+                    backend.set('background.slice',{'battery-saver':10,'standard':20,'performance':5}[profile])
+                    last_profile=profile
                 desired=set()
                 if unit:
                     parent=Path('/sys/fs/cgroup')/f'user.slice/user-{os.getuid()}.slice/user@{os.getuid()}.service'
@@ -150,13 +167,18 @@ def main():
                     # Boost the active branch as well as its leaf; weights are hierarchical.
                     if unit[1][0] in ('app.slice','session.slice'):desired.add(unit[1][0])
                 if desired!=policy.current:policy.focus(desired)
-                status={'running':True,'focused_class':window.get('class',''),'weighted_units':sorted(desired),'weight_changes':policy.changes,'policy':'relative CPU weights; no CPU caps or process termination'}
+                if desired!=io_policy.current:io_policy.focus(desired)
+                status={'running':True,'focused_class':window.get('class',''),'weighted_units':sorted(desired),'weight_changes':policy.changes,'io_weight_changes':io_policy.changes,'profile':profile,'cpu_weight':policy.weight,'io_weight':io_policy.weight,'policy':'relative CPU and I/O weights; no CPU caps or process termination'}
                 temp=status_path.with_suffix('.tmp');temp.write_text(json.dumps(status,indent=2)+'\n');temp.replace(status_path)
             except (OSError,RuntimeError,ValueError) as error:
                 print('Could not update foreground priority:',type(error).__name__,flush=True)
     finally:
         if events:events.close()
-        policy.close();status_path.write_text(json.dumps({'running':False})+'\n')
+        policy.close();io_policy.close()
+        if background_original is not None:
+            try:backend.set('background.slice',background_original)
+            except Exception:pass
+        status_path.write_text(json.dumps({'running':False})+'\n')
 
 
 if __name__=='__main__':main()

@@ -30,7 +30,7 @@ DARK=APPEARANCE["current"]()=="dark"
 GLASS=runpy.run_path(str(HOME/".local/bin/macos-glass"))
 GLASS_MODE=GLASS['enabled']()
 MODEL=runpy.run_path(str(HOME/'.local/bin/macos-dock-model'))
-KNOWN={'org.kde.dolphin':('Finder','system-file-manager'),
+KNOWN={'Chatgpt':('ChatGPT','/usr/share/pixmaps/chatgpt.png'),'chatgpt':('ChatGPT','/usr/share/pixmaps/chatgpt.png'),'org.kde.dolphin':('Finder','system-file-manager'),
        'brave-browser':('Brave','brave-browser'),'kitty':('Terminal','utilities-terminal'),
        'code':('Visual Studio Code','visual-studio-code'),
        'org.kde.okular':('Preview','org.kde.okular'),
@@ -135,6 +135,10 @@ def load_icon(icon):
     key=icon.to_string() if isinstance(icon,Gio.Icon) else icon
     if key not in icon_cache:
         try:
+            if isinstance(icon,str) and os.path.isabs(icon):
+                from gi.repository import GdkPixbuf
+                icon_cache[key]=GdkPixbuf.Pixbuf.new_from_file_at_scale(icon,256,256,True)
+                return icon_cache[key]
             flags=Gtk.IconLookupFlags.FORCE_SVG|Gtk.IconLookupFlags.FORCE_SIZE
             info=theme.lookup_by_gicon(icon,256,flags) if isinstance(icon,Gio.Icon) else theme.lookup_icon(icon,256,flags)
             if not info:info=theme.lookup_icon('application-x-executable',256,flags)
@@ -228,9 +232,27 @@ def tooltip(widget,x,y,keyboard,tip):
     tip.set_text(APPS[index][0]);return True
 canvas.connect('query-tooltip',tooltip)
 
+def app_menu(index,event):
+    classname=APPS[index][1]
+    if not classname:return
+    targets=[w for w in clients() if w.get('class')==classname]
+    menu=Gtk.Menu()
+    def close(*_):
+        for w in targets:
+            subprocess.Popen(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+w['address'])+'})'],stdout=subprocess.DEVNULL)
+    def quit_app(*_):
+        for pid in {w.get('pid',0) for w in targets}:
+            if pid>1:
+                try:os.kill(pid,signal.SIGTERM)
+                except ProcessLookupError:pass
+    for label,callback in [('Open',lambda *_:activate(index)),('Close windows',close),('Quit application',quit_app)]:
+        item=Gtk.MenuItem(label=label);item.connect('activate',callback);item.set_sensitive(label=='Open' or bool(targets));menu.append(item)
+    cancel_hide();menu.connect('deactivate',schedule);menu.show_all();menu.popup_at_pointer(event)
+
 def click(widget,event):
     index=hit(event.x,event.y)
     if index is not None and event.button==1:activate(index)
+    elif index is not None and event.button==3:app_menu(index,event)
     return True
 canvas.connect('button-press-event',click)
 

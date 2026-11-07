@@ -60,6 +60,11 @@ def candidates():
 
 
 def main():
+    import json
+    try:profile=json.loads(Path('/var/lib/macos-power-profiles/selected.json').read_text()).get('profile')
+    except (OSError,ValueError):profile='standard'
+    if profile in ('performance','battery-saver'):
+        print('Deferred optional cache warmup in '+profile+' mode.',flush=True);return
     reason=pressure_reason()
     if reason:
         print('Deferred app warmup: '+reason+'.',flush=True)

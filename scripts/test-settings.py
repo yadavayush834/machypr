@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Persistence, validation and backend error regression checks without changing the session."""
 from pathlib import Path
+from collections import namedtuple
 import json
 import runpy
 import tempfile
@@ -12,6 +13,15 @@ model=runpy.run_path(str(ROOT/'home/.local/bin/macos-settings-model'))
 wallpapers=runpy.run_path(str(ROOT/'home/.local/bin/macos-wallpapers'))
 
 class SettingsTests(unittest.TestCase):
+ def test_resource_usage_uses_available_memory_and_exact_bytes(self):
+  with tempfile.TemporaryDirectory() as folder:
+   home=Path(folder);meminfo=home/'meminfo'
+   meminfo.write_text('MemTotal: 16384 kB\nMemFree: 1024 kB\nMemAvailable: 6144 kB\nCached: 4096 kB\n')
+   with patch('shutil.disk_usage',return_value=namedtuple('usage','total used free')(10000001,6000000,4000001)):
+    usage=model['resource_usage'](home,meminfo)
+   self.assertEqual(usage['ram'],{'total':16777216,'used':10485760,'available':6291456})
+   self.assertEqual(usage['storage'],{'total':10000001,'used':6000000,'available':4000001})
+   self.assertEqual(usage['storage_path'],str(home))
  def test_options_merge_and_persist(self):
   with tempfile.TemporaryDirectory() as folder:
    home=Path(folder)

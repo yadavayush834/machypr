@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+"""Track active app time locally, excluding idle, locked and sleeping sessions."""
+import argparse
+import fcntl
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+sys.path.insert(0,str(Path.home()/'.local/lib'))
+import macos_screen_time as S
+
+
+def main():
+    parser=argparse.ArgumentParser();parser.add_argument('--idle',action='store_true');parser.add_argument('--active',action='store_true');args=parser.parse_args()
+    if args.idle:S.IDLE.touch();return
+    if args.active:S.IDLE.unlink(missing_ok=True);return
+    lock=(S.IDLE.parent/'macos-screen-time.lock').open('w')
+    try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError:return
+    running=[True]
+    for sig in (signal.SIGTERM,signal.SIGINT):signal.signal(sig,lambda *_:running.__setitem__(0,False))
+    with S.connect() as db:
+        db.execute('INSERT OR IGNORE INTO preferences VALUES(?,?)',('started',str(time.time())));db.commit()
+        previous=None;last=time.time();monotonic=time.monotonic()
+        while running[0]:
+            now=time.time();tick=time.monotonic();app=None
+            try:
+                active=json.loads(subprocess.check_output(['hyprctl','activewindow','-j'],timeout=2,stderr=subprocess.DEVNULL))
+                monitors=json.loads(subprocess.check_output(['hyprctl','monitors','-j'],timeout=2,stderr=subprocess.DEVNULL))
+                locked=subprocess.run(['pgrep','-u',str(os.getuid()),'-x','hyprlock'],stdout=subprocess.DEVNULL).returncode==0
+                if not S.IDLE.exists() and not locked and any(m.get('dpmsStatus',True) for m in monitors) and S.setting(db,'paused','0')!='1':
+                    app=active.get('class') or None
+                if app and app==previous and 0<tick-monotonic<=10 and abs((now-last)-(tick-monotonic))<2:
+                    S.record(db,app,last,now)
+                    today=time.strftime('%Y-%m-%d')
+                    limit=db.execute('SELECT minutes FROM limits WHERE app=?',(app,)).fetchone()
+                    if limit:
+                        used=db.execute('SELECT COALESCE(SUM(seconds),0) FROM usage WHERE day=? AND app=?',(today,app)).fetchone()[0]
+                        if used>=limit[0]*60 and not db.execute('SELECT 1 FROM reminders WHERE day=? AND app=?',(today,app)).fetchone():
+                            subprocess.Popen(['notify-send','Screen Time',f'{app} reached your {limit[0]} minute daily reminder.'])
+                            db.execute('INSERT INTO reminders VALUES(?,?)',(today,app))
+                db.commit()
+            except (OSError,ValueError,subprocess.SubprocessError) as error:
+                print('Screen Time sample skipped:',error,flush=True);app=None
+            previous=app;last=now;monotonic=tick
+            for _ in range(10):
+                if not running[0]:break
+                time.sleep(.5)
+
+
+if __name__=='__main__':main()

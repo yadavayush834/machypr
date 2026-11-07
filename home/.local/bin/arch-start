@@ -24,6 +24,7 @@ fi
 
 start hyprpaper
 start dunst
+"$HOME/.local/bin/macos-screen-time" --active
 start hypridle
 systemctl is-active --quiet NetworkManager && start nm-applet --indicator
 if systemctl is-active --quiet bluetooth && command -v blueman-applet >/dev/null && ! pgrep -u "$UID" -f '/usr/bin/blueman-applet' >/dev/null; then
@@ -47,4 +48,4 @@ fi
 systemctl --user restart mac-os-updates.timer >/dev/null 2>&1 &
 
 # Prepare the launcher and app file cache outside the login critical path.
-systemctl --user start macos-launchpad.service macos-app-cache.timer macos-responsiveness.service >/dev/null 2>&1 &
+systemctl --user start macos-launchpad.service macos-app-cache.timer macos-responsiveness.service macos-screen-time.service >/dev/null 2>&1 &

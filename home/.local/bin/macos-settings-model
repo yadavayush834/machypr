@@ -179,6 +179,21 @@ def bluetooth_state():
     return {'enabled':'Powered: yes' in info, 'devices':devices}
 
 
+def resource_usage(home=None, meminfo=Path('/proc/meminfo')):
+    """Kernel memory and filesystem counters in bytes; no rounded source values."""
+    memory = {}
+    for line in Path(meminfo).read_text().splitlines():
+        key, value = line.split(':', 1)
+        memory[key] = int(value.split()[0]) * 1024
+    total = memory['MemTotal']
+    available = memory['MemAvailable']
+    home = Path.home() if home is None else Path(home)
+    disk = shutil.disk_usage(home)
+    return {'ram': {'total': total, 'used': total-available, 'available': available},
+            'storage': {'total': disk.total, 'used': disk.used, 'available': disk.free},
+            'storage_path': str(home)}
+
+
 def system_info():
     memory = {}
     for line in Path('/proc/meminfo').read_text().splitlines():

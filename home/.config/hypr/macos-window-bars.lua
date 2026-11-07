@@ -17,3 +17,10 @@ if hl.plugin.hyprbars then
  hl.plugin.hyprbars.add_button({bg_color='rgb(febc2e)',fg_color='rgb(805600)',size=12,icon='−',action=[[hyprctl dispatch 'hl.dsp.window.move({workspace="special:minimized",follow=false})']]})
  hl.plugin.hyprbars.add_button({bg_color='rgb(28c840)',fg_color='rgb(006500)',size=12,icon='+',action=[[hyprctl dispatch 'hl.dsp.window.fullscreen({mode="maximized"})']]})
 end
+
+-- These applications draw their own minimize/maximize/close controls.
+-- Keep one title bar instead of stacking compositor controls above theirs.
+hl.window_rule({
+ match={class="^(chatgpt|Chatgpt|ChatGPT|codex|Codex|docker-desktop|Docker Desktop|spotify|Spotify)$"},
+ ["hyprbars:no_bar"]=true
+})

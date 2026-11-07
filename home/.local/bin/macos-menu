@@ -2,8 +2,9 @@
 import gi,json,subprocess,sys,os,datetime,runpy
 from pathlib import Path
 gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
-from gi.repository import Gtk,Gdk,GtkLayerShell
+from gi.repository import Gtk,Gdk,GLib,GtkLayerShell
 import cairo
+sys.path.insert(0,str(Path.home()/'.local/lib'))
 home=Path.home();kind=sys.argv[1] if len(sys.argv)>1 else 'apple'
 def run(args):
  launcher=home/'.local/bin/macos-app-launch'
@@ -71,39 +72,42 @@ GtkLayerShell.set_margin(win,GtkLayerShell.Edge.TOP,24)
 if os.environ.get('MACOS_MENU_X'):
  GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.LEFT,True)
  screen=Gdk.Display.get_default().get_monitor(0).get_geometry().width
- x=min(int(os.environ['MACOS_MENU_X']),screen-305)
+ x=min(int(os.environ['MACOS_MENU_X']),screen-(420 if kind=='media' else 380 if kind in ('control','codex') else 305))
  GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,max(6,x))
-elif kind in ('battery','control','calendar','network'):
+elif kind in ('battery','control','calendar','network','codex','media'):
  GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.RIGHT,True)
- GtkLayerShell.set_margin(win,GtkLayerShell.Edge.RIGHT, {'battery':160,'control':70,'calendar':8,'network':120}[kind])
+ GtkLayerShell.set_margin(win,GtkLayerShell.Edge.RIGHT, {'battery':160,'control':70,'calendar':8,'network':120,'codex':12,'media':180}[kind])
 else:
  GtkLayerShell.set_anchor(win,GtkLayerShell.Edge.LEFT,True)
  GtkLayerShell.set_margin(win,GtkLayerShell.Edge.LEFT,{'apple':8,'app':40,'file':125,'edit':170,'view':215,'go':260,'window':300,'help':365}.get(kind,8))
 box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=0);box.set_border_width(5);win.add(box)
 if kind in ('apple','app','file','edit','view','go','window','help'):
  win.get_style_context().add_class('application-menu')
+if kind == 'media':
+ from macos_media import Panel
+ win.get_style_context().add_class('media-panel');media_panel=Panel();box.pack_start(media_panel,False,False,0)
 if kind == 'control':
- panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12);panel.set_border_width(12);panel.set_size_request(300,-1)
- heading=Gtk.Label(label='Control Center');heading.set_xalign(0);heading.get_style_context().add_class('panel-title');panel.pack_start(heading,False,False,2)
+ win.get_style_context().add_class('control-center')
+ panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);panel.set_border_width(8);panel.set_size_request(350,-1)
  grid=Gtk.Grid();grid.set_row_spacing(7);grid.set_column_spacing(7)
- for index,(title,icon,command) in enumerate([('Wi-Fi','network-wireless-symbolic',[local('macos-menu'),'network']),('Bluetooth','bluetooth-symbolic',[local('arch-bluetooth')]),('Sound','audio-volume-high-symbolic',['pavucontrol']),('Lock Screen','system-lock-screen-symbolic',['hyprlock'])]):
+ network=status_module['network_state']()[1]
+ for index,(title,icon,detail,command) in enumerate([('Wi-Fi','network-wireless-symbolic',network,[local('macos-menu'),'network']),('Focus','weather-clear-night-symbolic','Notifications',[local('macos-settings'),'focus']),('Bluetooth','bluetooth-symbolic','Devices',[local('arch-bluetooth')]),('Screen Mirroring','video-display-symbolic','Display settings',[local('macos-settings'),'displays'])]):
   tile=Gtk.Button();tile.get_style_context().add_class('control-tile')
-  inside=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8);image=Gtk.Image.new_from_icon_name(icon,Gtk.IconSize.BUTTON);inside.pack_start(image,False,False,0);inside.pack_start(Gtk.Label(label=title),False,False,0);tile.add(inside)
+  inside=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8);image=Gtk.Image.new_from_icon_name(icon,Gtk.IconSize.BUTTON);inside.pack_start(image,False,False,0)
+  text=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=2);name=Gtk.Label(label=title,xalign=0);text.pack_start(name,False,False,0)
+  subtitle=Gtk.Label(label=detail,xalign=0);subtitle.set_max_width_chars(18);subtitle.set_ellipsize(3);subtitle.get_style_context().add_class('control-detail');text.pack_start(subtitle,False,False,0)
+  inside.pack_start(text,True,True,0);tile.add(inside)
   tile.connect('clicked',lambda _,command=command:(Gtk.main_quit(),run(command)))
   grid.attach(tile,index%2,index//2,1,1)
  panel.pack_start(grid,False,False,0)
  appearance_button=Gtk.Button(label='Appearance…  '+appearance_module['preference']()['mode'].title())
  appearance_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'appearance'])))
- panel.pack_start(appearance_button,False,False,0)
  glass_button=Gtk.Button(label='Liquid Glass…  '+('On' if glass_module['enabled']() else 'Off'))
  glass_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'glass'])))
- panel.pack_start(glass_button,False,False,0)
  sound_button=Gtk.Button(label='Sound Effects…')
  sound_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'sound-effects'])))
- panel.pack_start(sound_button,False,False,0)
  dashboard_button=Gtk.Button(label='Open Dashboard')
  dashboard_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-dashboard')])))
- panel.pack_start(dashboard_button,False,False,0)
  for title,initial,callback in [('Display',70,lambda value:run(['brightnessctl','set',str(round(value))+'%'])),('Sound',50,lambda value:run(['wpctl','set-volume','@DEFAULT_AUDIO_SINK@',str(round(value))+'%']))]:
   try:
    if title=='Sound':
@@ -111,14 +115,72 @@ if kind == 'control':
    else:
     now=float(subprocess.check_output(['brightnessctl','get'],text=True,timeout=.5));maximum=float(subprocess.check_output(['brightnessctl','max'],text=True,timeout=.5));initial=now/maximum*100
   except (subprocess.SubprocessError,ValueError,IndexError,FileNotFoundError):pass
-  caption=Gtk.Label();caption.set_markup('<b>'+title+'</b>');caption.set_xalign(0);panel.pack_start(caption,False,False,0)
+  card=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6);card.set_border_width(10);card.get_style_context().add_class('control-card')
+  caption=Gtk.Label();caption.set_markup('<b>'+title+'</b>');caption.set_xalign(0);card.pack_start(caption,False,False,0)
+  controls=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=8)
+  image=Gtk.Image.new_from_icon_name('display-brightness-symbolic' if title=='Display' else 'audio-volume-high-symbolic',Gtk.IconSize.MENU);controls.pack_start(image,False,False,0)
   slider=Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,1 if title=='Display' else 0,100,1);slider.set_value(initial);slider.set_draw_value(False)
+  slider.get_accessible().set_name(title+' level');slider.set_hexpand(True)
   def changed(widget,callback=callback):
    if hasattr(widget,'pending'):GLib.source_remove(widget.pending)
    def commit():callback(widget.get_value());del widget.pending;return False
    widget.pending=GLib.timeout_add(100,commit)
-  from gi.repository import GLib
-  slider.connect('value-changed',changed);panel.pack_start(slider,False,False,0)
+  slider.connect('value-changed',changed);controls.pack_start(slider,True,True,0)
+  if title=='Sound':
+   output=Gtk.Button.new_from_icon_name('audio-headphones-symbolic',Gtk.IconSize.BUTTON);output.set_tooltip_text('Choose sound output');output.get_accessible().set_name('Choose sound output')
+   output.connect('clicked',lambda _:(Gtk.main_quit(),run(['pavucontrol'])))
+   controls.pack_start(output,False,False,0)
+  card.pack_start(controls,False,False,0);panel.pack_start(card,False,False,0)
+ footer=Gtk.Grid();footer.set_column_homogeneous(True);footer.set_column_spacing(6);footer.set_row_spacing(4)
+ for index,control in enumerate((appearance_button,glass_button,sound_button,dashboard_button)):footer.attach(control,index%2,index//2,1,1)
+ lock_button=Gtk.Button(label='Lock Screen');lock_button.connect('clicked',lambda _:(Gtk.main_quit(),run(['hyprlock'])))
+ footer.attach(lock_button,0,2,2,1)
+ panel.pack_start(footer,False,False,0)
+ box.pack_start(panel,False,False,0)
+if kind == 'codex':
+ win.get_style_context().add_class('codex-usage')
+ import threading
+ usage=runpy.run_path(str(home/'.local/share/codex-usage/usage.py'))
+ panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=14);panel.set_border_width(14);panel.set_size_request(340,-1)
+ heading=Gtk.Label(label='Codex Usage',xalign=0);heading.set_markup('<b>Codex Usage</b>');panel.pack_start(heading,False,False,0)
+ usage_fields={}
+ for duration,title in ((300,'5-hour allowance'),(10080,'Weekly allowance')):
+  group=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=5)
+  name=Gtk.Label(label=title,xalign=0);value=Gtk.Label(label='Reading usage…',xalign=0)
+  progress=Gtk.ProgressBar();reset=Gtk.Label(label='',xalign=0);reset.set_line_wrap(True);reset.set_max_width_chars(40)
+  for child in (name,value,progress,reset):group.pack_start(child,False,False,0)
+  panel.pack_start(group,False,False,0);usage_fields[duration]=(value,progress,reset)
+ checked=Gtk.Label(label='Checking your signed-in Codex account…',xalign=0);checked.set_line_wrap(True);checked.set_max_width_chars(40);panel.pack_start(checked,False,False,0)
+ refresh_button=Gtk.Button(label='Refresh Usage');panel.pack_start(refresh_button,False,False,0)
+ usage_alive=[True];usage_busy=[False]
+ def render_usage(data):
+  usage_busy[0]=False
+  if not usage_alive[0]:return False
+  refresh_button.set_sensitive(True)
+  buckets=usage['windows'](data)
+  for duration,(value,progress,reset) in usage_fields.items():
+   window=buckets.get(duration);remaining=usage['remaining'](window)
+   value.set_text(f'{100-remaining:g}% used · {remaining:g}% remaining' if remaining is not None else 'Unavailable')
+   progress.set_fraction((100-remaining)/100 if remaining is not None else 0)
+   reset.set_text(usage['reset_text'](window))
+  fetched=data.get('fetched_at')
+  message='Checked '+datetime.datetime.fromtimestamp(fetched).strftime('%H:%M:%S') if fetched else 'Usage unavailable'
+  if data.get('error'):message+=' · Saved snapshot\n'+data['error'] if fetched else '\n'+data['error']
+  checked.set_text(message);return False
+ def refresh_usage(force=False):
+  if not usage_alive[0]:return False
+  if usage_busy[0]:return True
+  usage_busy[0]=True;refresh_button.set_sensitive(False)
+  def fetch():
+   try:data=usage['snapshot'](force=force)
+   except Exception as error:data={'limits':{},'error':str(error)}
+   GLib.idle_add(render_usage,data)
+  threading.Thread(target=fetch,daemon=True).start();return True
+ refresh_button.connect('clicked',lambda _:refresh_usage(True))
+ win.connect('destroy',lambda *_:usage_alive.__setitem__(0,False))
+ cached=usage['load_cache']()
+ if cached:render_usage(cached)
+ refresh_usage();GLib.timeout_add_seconds(60,refresh_usage)
  box.pack_start(panel,False,False,0)
 if kind == 'calendar':
  content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);content.set_border_width(8)
@@ -216,7 +278,7 @@ if kind == 'network':
   scan();return True
  GLib.timeout_add_seconds(5,periodic)
 
-for item in ([] if kind in ('battery','control','calendar','network') else menus.get(kind,menus['apple'])):
+for item in ([] if kind in ('battery','control','calendar','network','codex','media') else menus.get(kind,menus['apple'])):
  if item is None:box.pack_start(Gtk.Separator(),False,False,2);continue
  label,action=item
  checked=label.startswith('✓ ')
@@ -245,6 +307,29 @@ def menu_key(widget,event):
   index=0 if event.keyval==Gdk.KEY_Home else len(menu_buttons)-1 if event.keyval==Gdk.KEY_End else (index+(1 if event.keyval==Gdk.KEY_Down else -1))%len(menu_buttons)
   menu_buttons[index].grab_focus();return True
  return False
+control_css=Gtk.CssProvider()
+card_color='#38383d' if appearance_dark else '#f3f3f5'
+detail_color='#c1c1c8' if appearance_dark else '#5d5d65'
+control_css.load_from_data(f'''
+window.control-center, window.codex-usage, window.media-panel {{border-radius:16px;}}
+window.media-panel button {{min-width:0;min-height:0;padding:3px 7px;background:transparent;}}
+window.media-panel .track-title {{font-size:13px;font-weight:bold;}}
+window.media-panel label {{font-size:12px;}}
+window.media-panel scale {{padding:2px 0;min-height:12px;}}
+window.media-panel scale trough {{min-height:4px;border-radius:2px;}}
+window.media-panel scale slider {{min-width:8px;min-height:8px;}}
+window.control-center button {{min-width:0;padding:8px;border-radius:10px;}}
+window.control-center .control-tile {{min-width:146px;min-height:52px;background:{card_color};}}
+window.control-center .control-tile label {{font-size:13px;}}
+window.control-center .control-detail {{font-size:11px;color:{detail_color};}}
+window.control-center .control-card {{background:{card_color};border-radius:12px;}}
+window.control-center scale {{min-width:200px;}}
+window.control-center scale trough {{min-height:18px;border-radius:9px;}}
+window.control-center scale slider {{min-width:20px;min-height:20px;}}
+window.codex-usage progressbar trough {{min-height:7px;background:{card_color};border-radius:4px;}}
+window.codex-usage progressbar progress {{min-height:7px;background:#1680ef;border-radius:4px;}}
+'''.encode())
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),control_css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+2)
 rows_css=Gtk.CssProvider();rows_css.load_from_data(b'button.menu-row {min-width:250px;padding:4px 6px;border-radius:4px;} button.menu-row label {font-family:Inter;font-size:13px;} button.menu-row .shortcut {font-size:12px;opacity:0.70;} button.menu-row:hover label,button.menu-row:focus label {color:white;}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),rows_css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+2)
 application_css=Gtk.CssProvider();application_css.load_from_data(b'window.application-menu {border-radius:7px;border:1px solid rgba(128,128,135,.4);} window.application-menu button.menu-row {min-width:212px;min-height:18px;padding:2px 7px;border-radius:4px;} window.application-menu button.menu-row label {font-size:13px;font-weight:400;} window.application-menu button.menu-row .shortcut {font-size:13px;opacity:.65;} window.application-menu separator {min-height:1px;margin:1px 7px;background:rgba(128,128,135,.30);} window.application-menu button:hover,window.application-menu button:focus {background:#1479e8;}')
