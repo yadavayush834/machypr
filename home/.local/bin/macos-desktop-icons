@@ -21,7 +21,9 @@ try:
 except (OSError,ValueError):positions={}
 win=Gtk.Window(name='desktop-icons');win.set_decorated(False)
 Layer.init_for_window(win);Layer.set_namespace(win,'macos-desktop-icons');Layer.set_layer(win,Layer.Layer.BOTTOM)
-Layer.set_keyboard_mode(win,Layer.KeyboardMode.ON_DEMAND);Layer.set_exclusive_zone(win,-1)
+# Hyprland 0.57 focuses ON_DEMAND layers on pointer motion, even with
+# follow_mouse=0. Request keyboard focus only after an icon is clicked.
+Layer.set_keyboard_mode(win,Layer.KeyboardMode.NONE);Layer.set_exclusive_zone(win,-1)
 for edge in (Layer.Edge.TOP,Layer.Edge.BOTTOM,Layer.Edge.RIGHT,Layer.Edge.LEFT):Layer.set_anchor(win,edge,True)
 Layer.set_margin(win,Layer.Edge.TOP,30);Layer.set_margin(win,Layer.Edge.BOTTOM,8)
 canvas=Gtk.Fixed();win.add(canvas)
@@ -74,11 +76,28 @@ def motion(widget,event):
  if drag['moved']:move_item(drag['name'],drag['origin'][0]+dx,drag['origin'][1]+dy)
  return True
 
+def release_keyboard(*_):
+ Layer.set_keyboard_mode(win,Layer.KeyboardMode.NONE)
+ return False
+
+def focus_clicked_icon():
+ # The button is already released, so taking focus cannot interrupt dragging.
+ Layer.set_keyboard_mode(win,Layer.KeyboardMode.EXCLUSIVE)
+ def on_demand():
+  if Layer.get_keyboard_mode(win)==Layer.KeyboardMode.EXCLUSIVE:
+   Layer.set_keyboard_mode(win,Layer.KeyboardMode.ON_DEMAND)
+  return False
+ GLib.timeout_add(50,on_demand)
+
+win.add_events(Gdk.EventMask.LEAVE_NOTIFY_MASK)
+win.connect('leave-notify-event',release_keyboard)
+win.connect('focus-out-event',release_keyboard)
+
 def release(widget,event):
  global drag
  if event.button!=1 or drag is None:return False
  if drag['moved']:save_positions()
- drag=None;return True
+ drag=None;focus_clicked_icon();return True
 
 def key(widget,event,name):
  if event.keyval in (Gdk.KEY_Return,Gdk.KEY_KP_Enter):open_item(name);return True
