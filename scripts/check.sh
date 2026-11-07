@@ -21,4 +21,5 @@ python3 "$root/scripts/test-settings.py"
 python3 "$root/scripts/test-desktop-model.py"
 python3 "$root/scripts/test-performance.py"
 python3 "$root/scripts/test-power-profiles.py"
+python3 "$root/scripts/test-background-apps.py"
 echo 'All checks passed.'

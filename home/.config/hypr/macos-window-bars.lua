@@ -21,6 +21,6 @@ end
 -- These applications draw their own minimize/maximize/close controls.
 -- Keep one title bar instead of stacking compositor controls above theirs.
 hl.window_rule({
- match={class="^(chatgpt|Chatgpt|ChatGPT|codex|Codex|docker-desktop|Docker Desktop|spotify|Spotify)$"},
+ match={class="^(chatgpt|Chatgpt|ChatGPT|codex|Codex|docker-desktop|Docker Desktop|spotify|Spotify|org.telegram.desktop|telegram-desktop|Telegram)$"},
  ["hyprbars:no_bar"]=true
 })

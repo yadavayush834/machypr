@@ -137,7 +137,7 @@ class Tray:
                 else:item['image'].set_from_icon_name('application-x-executable-symbolic',Gtk.IconSize.MENU)
             # Network and Bluetooth already have dedicated menu-bar controls.
             duplicate=props.get('Id','').lower() in ('nm-applet','blueman','blueman-applet')
-            item['button'].show_all();item['button'].set_visible(props.get('Status')!='Passive' and not duplicate)
+            item['button'].show_all();item['button'].set_visible(not duplicate)
         self.bus.call(item['service'],item['path'],'org.freedesktop.DBus.Properties','GetAll',GLib.Variant('(s)',(ITEM,)),None,Gio.DBusCallFlags.NONE,2000,None,done)
 
     def call(self,key,method,args):
@@ -148,12 +148,17 @@ class Tray:
         item=self.items.get(key)
         if not item:return False
         mouse_button=event.get_button()[1]
-        _,x,y=event.get_root_coords()
+        x,y=event.get_root_coords()[-2:]
         menu_path=item['properties'].get('Menu')
         if mouse_button==3 or item['properties'].get('ItemIsMenu'):
             if menu_path and menu_path!='/':
                 if item['menu'] is None:item['menu']=DbusmenuGtk3.Menu.new(item['service'],menu_path)
-                item['menu'].show_all();item['menu'].popup_at_widget(button,Gdk.Gravity.SOUTH_EAST,Gdk.Gravity.NORTH_EAST,event)
+                attached=item['menu'].get_attach_widget()
+                if isinstance(attached,Gtk.MenuItem):attached.set_submenu(None)
+                menu=Gtk.Menu()
+                controls=Gtk.MenuItem(label='Application menu');controls.set_submenu(item['menu']);menu.append(controls)
+                quit=Gtk.MenuItem(label='Quit application');quit.connect('activate',lambda *_:self.quit_app(key));menu.append(quit)
+                menu.show_all();menu.popup_at_widget(button,Gdk.Gravity.SOUTH_EAST,Gdk.Gravity.NORTH_EAST,event)
             else:
                 self.call(key,'ContextMenu',GLib.Variant('(ii)',(int(x),int(y))))
                 menu=Gtk.Menu()
@@ -168,6 +173,8 @@ class Tray:
         item=self.items.get(key)
         if not item:return
         identity=(str(item['properties'].get('Id',''))+' '+str(item['properties'].get('Title',''))).lower()
+        if 'docker' in identity:
+            subprocess.Popen(['systemctl','--user','stop','docker-desktop.service']);return
         for name,app_id in [('discord','com.discordapp.Discord'),('spotify','com.spotify.Client'),('telegram','org.telegram.desktop'),('vlc','org.videolan.VLC')]:
             if name in identity:
                 subprocess.Popen(['flatpak','kill',app_id]);return

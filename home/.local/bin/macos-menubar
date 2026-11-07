@@ -13,6 +13,7 @@ import sys
 import gi
 sys.path.insert(0,str(Path.home()/'.local/lib'))
 from macos_tray import Tray
+from macos_background_apps import BackgroundApps
 
 gi.require_version('Gtk','3.0')
 gi.require_version('GtkLayerShell','0.1')
@@ -159,6 +160,7 @@ for label,kind in [('File','file'),('Edit','edit'),('View','view'),('Go','go'),(
 row.pack_start(Gtk.Box(),True,True,0)
 tray_box=Gtk.Box(spacing=0);row.pack_start(tray_box,False,False,0)
 tray=Tray(tray_box)
+background_apps=BackgroundApps(tray_box,tray)
 music=button('','media','status');music.remove(music.get_child())
 music_image=Gtk.Image.new_from_icon_name('media-playback-start-symbolic',Gtk.IconSize.MENU);music_image.set_pixel_size(16);music.add(music_image)
 music.set_tooltip_text('Now Playing');music.get_accessible().set_name('Now Playing');row.pack_start(music,False,False,0)
@@ -264,7 +266,7 @@ def sample_status():
     return True
 
 def shutdown(*_):
-    dismiss_popup();tray.stop();executor.shutdown(wait=False,cancel_futures=True);usage_executor.shutdown(wait=False,cancel_futures=True);Gtk.main_quit()
+    dismiss_popup();background_apps.stop();tray.stop();executor.shutdown(wait=False,cancel_futures=True);usage_executor.shutdown(wait=False,cancel_futures=True);Gtk.main_quit()
 
 GLib.timeout_add(250,update_active);GLib.timeout_add_seconds(5,sample_status)
 GLib.timeout_add_seconds(1,update);win.show_all();update();update_active()

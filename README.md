@@ -71,7 +71,7 @@ The bootstrap downloads this repository into a temporary directory and runs its 
 | **Appearance** | Light, Dark or scheduled Auto, shared across desktop surfaces and supported app palettes |
 | **Control Center** | Display and Sound panels, Wi-Fi, Bluetooth, Focus, display settings, screen lock, appearance and sound-effect controls |
 | **Codex usage** | Small ChatGPT icon; hover for allowance remaining, click for usage and reset times, right-click to refresh |
-| **Background apps** | Apps that publish tray controls appear as small menu-bar icons; click to activate, right-click for the app menu |
+| **Background apps** | Running Flatpak apps and supported desktop apps stay in the menu bar after closing their windows; right-click → Quit application |
 | **Now Playing** | Menu-bar music controls with artwork, title, artist, elapsed time, seeking, play/pause and track navigation; supports MPRIS apps and browsers |
 | **Screen Time** | Local daily/weekly foreground usage, per-app history, hourly charts, pause/reset controls and daily reminder limits |
 | **Power profiles** | Battery Saver, Standard (Balanced), and Performance with real CPU/GPU controls, thermal feedback, and foreground CPU/I/O priority; see [details and rollback](docs/POWER-PROFILES.md) |
@@ -87,7 +87,7 @@ The bootstrap downloads this repository into a temporary directory and runs its 
 
 Screen Time starts recording at installation; earlier activity cannot be recovered. It samples foreground apps every five seconds and excludes locked sessions, sleep, and idle time after 60 seconds. Data stays in `~/.local/state/macos-desktop/screen-time.sqlite3`; window titles and document names are never stored. Daily limits send notifications and do not block applications. Manage it in **System Settings → Screen Time**. The `macos-screen-time.service` user service handles recording; the idle listener is in `hypridle.conf`.
 
-The tray hosts applications that register StatusNotifier items, rather than listing every process. Apps without a tray implementation do not appear. Music controls use MPRIS and only enable actions supported by the selected player. The Codex allowance icon is separate from an application's running status.
+The menu bar hosts StatusNotifier tray icons and adds fallback icons for running Flatpak apps plus ChatGPT, Docker Desktop, Discord, Telegram, Spotify, VLC, VS Code and Brave. Icons remain while the app runs without a window. Right-click an icon and choose **Quit application**; Docker also stops its desktop backend service. Native quit uses a validated process identity; unrelated system services are excluded. Detection refreshes every two seconds outside the GTK rendering thread. Music controls use MPRIS and only enable actions supported by the selected player. The Codex allowance icon is separate from an application's running status.
 
 These are captures of the running desktop, using a clean demonstration terminal. The dock combines pinned everyday applications with apps from the current desktop.
 
