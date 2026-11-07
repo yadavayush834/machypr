@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=Dashboard
 Comment=Calendar, local quick note and laptop status
-Exec=@HOME@/.local/bin/macos-dashboard
+Exec=@HOME@/.local/bin/macos-app-launch @HOME@/.local/bin/macos-dashboard
 Icon=x-office-calendar
 Type=Application
 Categories=Utility;

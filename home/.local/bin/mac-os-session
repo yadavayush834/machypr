@@ -33,11 +33,11 @@ try:
     for filename, digest in trusted.items():
         if hashlib.sha256(Path(filename).read_bytes()).hexdigest() != digest:
             env['MACOS_DISABLE_PLUGINS'] = '1'
-            record('Compositor or plugin changed since validation; optional title-bar plugin disabled.')
+            record('Compositor or plugin changed since validation; optional desktop plugins disabled.')
             break
 except (OSError, ValueError):
     env['MACOS_DISABLE_PLUGINS'] = '1'
-    record('No trusted plugin baseline; optional title-bar plugin disabled.')
+    record('No trusted plugin baseline; optional desktop plugins disabled.')
 
 def verify(config):
     try:

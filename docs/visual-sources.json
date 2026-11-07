@@ -22,5 +22,11 @@
   {
     "repository": "https://github.com/david-x3d/kde-plasma-liquid-glass-theme.git",
     "commit": "d90cf3e5467ff9cf75eb69d47663d86e8d8ea0fa"
+  },
+  {
+    "repository": "https://github.com/hyprnux/hyprglass.git",
+    "commit": "dc00c628623e5e504b363e26dd489ee766d2fa12",
+    "use": "Locally built native compositor refraction for Hyprland 0.57.1",
+    "license": "BSD-3-Clause"
   }
 ]

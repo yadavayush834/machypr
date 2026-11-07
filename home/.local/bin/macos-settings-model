@@ -221,7 +221,9 @@ def launch(args):
     executable = args[0]
     if not (Path(executable).is_file() or shutil.which(executable)):
         raise RuntimeError(f'{executable} is not installed.')
-    subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+    launcher=ROOT/'macos-app-launch'
+    command=[str(launcher),*args] if launcher.is_file() else args
+    subprocess.Popen(command,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 
 
 def dock_preferences(home=None):

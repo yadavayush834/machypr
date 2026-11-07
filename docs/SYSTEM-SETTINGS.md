@@ -14,7 +14,7 @@ The native GTK application follows the sidebar, search, grouped rows and Light/D
 | Battery | Actual charge/power source; energy modes when Power Profiles Daemon is installed |
 | General | Hardware/kernel/storage information; explicit package-update commands; system time/time zone, hostname, login items, user services and backup folders |
 | Accessibility | Reduce Motion and GTK text scaling |
-| Appearance | Light/Dark/Auto, Liquid Glass, blur and corner radius |
+| Appearance | Light/Dark/Auto, compositor refraction through HyprGlass when installed, native frosted fallback, blur and corner radius |
 | Menu Bar | Opens the existing Control Center and related settings |
 | Desktop & Dock | Wallpaper, desktop folder, click/pointer focus; persistent Dock size, auto-hide and magnification |
 | Displays | Brightness, advertised resolution/refresh modes and scale; mode changes revert after 15 seconds unless confirmed |
@@ -56,3 +56,5 @@ Right-click an empty part of the desktop for Wallpaper or System Settings, along
 `bash scripts/check.sh` includes isolated persistence, validation, wallpaper and desktop rename/trash regression checks. `python scripts/test-settings-desktop.py` additionally renders every page in a live Hyprland session, waits for asynchronous state, captures representative pages and checks search/history without changing settings. Live compositor apply/readback and wallpaper application were also checked during implementation.
 
 Visual and behavior references: [Apple: Customize your Mac with System Settings](https://support.apple.com/en-by/guide/mac-help/mh15217/mac), [Apple: Find options in System Settings](https://support.apple.com/en-ie/guide/mac-help/mchl8d10839d/mac), and the [macOS Tahoe screenshot library](https://512pixels.net/projects/aqua-screenshot-library/macos-26-tahoe/). Wallpaper provenance: [512 Pixels default wallpaper archive](https://512pixels.net/projects/default-mac-wallpapers-in-5k/) and the pinned collection above.
+
+Refractive rendering, its application-opacity policy and window containment are documented in [REFRACTIVE-GLASS.md](REFRACTIVE-GLASS.md).

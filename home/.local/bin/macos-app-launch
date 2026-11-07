@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Keep new desktop applications in separate user scopes for resource accounting.
+set -euo pipefail
+(($#)) || { echo 'Usage: macos-app-launch COMMAND [ARGUMENTS...]' >&2; exit 2; }
+if command -v systemd-run >/dev/null && [[ -S ${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/systemd/private ]]; then
+ exec systemd-run --user --scope --collect --quiet --slice=app.slice -- "$@"
+fi
+exec "$@"

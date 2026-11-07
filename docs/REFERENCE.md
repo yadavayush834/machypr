@@ -152,3 +152,9 @@ Appearance changes use `hyprctl reload config-only` because hyprbars caches rend
 `Alt + Tab` and `Alt + Shift + Tab` send Ctrl+Tab and Ctrl+Shift+Tab to the focused window for forward/backward tab switching. Kitty maps those shortcuts to terminal tabs. Other applications use their own tab-switching behavior (VS Code uses its recent-editor list); applications without tabs may ignore them. `Super + Tab` opens the desktop window switcher.
 
 Window-switcher row actions run after both the menu and its outside-click overlay have been unmapped and synchronized with the compositor. Selecting a window focuses and raises it above other floating windows; selecting a minimized window restores it first. `python scripts/test-window-menu-desktop.py` optionally checks the live GTK button callbacks using two disposable windows, without changing existing application contents.
+
+## Refractive material and window containment
+
+The optional glass mode now uses a pinned HyprGlass compositor plugin when available, including actual background sampling and edge refraction. It applies a 0.92 opacity rule to normal app windows; fullscreen remains opaque and is excluded from glass. This supersedes the earlier all-opaque-client glass policy described above. See [renderer installation, fallback and verification](REFRACTIVE-GLASS.md).
+
+Floating windows use `misc.float_force_onscreen=2`. Initial dimensions adapt to monitor size, with monitor-relative maximum dimensions to keep normal client requests and pointer resizing usable. The expression syntax is `monitor_w*0.95` / `monitor_h*0.85`. Explicit low-level resize dispatchers can bypass Hyprland size hints; the rules target normal desktop operations.

@@ -217,25 +217,20 @@ Brave after applying the configuration so its built-in window buttons are hidden
 
 ### Optional Liquid Glass appearance
 
-Open **Apple menu → Liquid Glass…** or **Control Center → Liquid Glass…**,
-then select **Yes** or **No**. The preference persists across logins and is
-independent of Light/Dark appearance. Yes enables blurred translucent shell
-surfaces, highlighted edges, pointer-responsive dock lighting, translucent
-shared title bars and eased window entrances. No restores standard styling.
-Application content remains opaque.
+Open **System Settings → Appearance → Liquid Glass**, **Apple menu → Liquid Glass…**, or **Control Center → Liquid Glass…**. The setting persists and follows Light/Dark appearance.
 
-This is a native GTK/Cairo/Hyprland approximation inspired by
-[iyinchao/liquid-glass-studio](https://github.com/iyinchao/liquid-glass-studio),
-not Apple's compositor or the reference's WebGL/WebGPU renderer. It does not
-implement optical refraction, chromatic dispersion, merging glass shapes,
-or change third-party app interiors.
+When the matching [HyprGlass](https://github.com/hyprnux/hyprglass) renderer is installed, windows and selected desktop panels use live compositor sampling, edge refraction, chromatic dispersion and highlights. Standard app windows use 92% opacity so the material can show through; fullscreen stays opaque. Native Settings and shell panels expose translucent backgrounds. Apple’s private compositor and individual third-party toolbars are not replaced. If the renderer is missing or incompatible, the native frosted fallback remains available.
+
+The installer builds a pinned renderer for Hyprland 0.57.1. To install it separately: `bash scripts/install-refractive-glass.sh`, then `macos-glass on`. `macos-glass status` reports whether the real renderer is active or the fallback is in use. Rebuild after a compositor update. Details and live tests: [Refractive glass and window bounds](docs/REFRACTIVE-GLASS.md).
 
 ## November 7 desktop update
 
-The current setup adds Tahoe themes and icons, a local Dashboard, developer app pins, smoother Alt+Tab window cycling, simpler title-bar dragging, a lighter lock screen, lid-open display activation and optional faster suspend. Launchpad stays ready in memory, search updates without a debounce delay, and the dock queries Hyprland directly. A low-priority user timer warms up to 768 MiB of common application files after sign-in; these pages are reclaimable when other programs need RAM.
+The current setup adds Tahoe themes and icons, a local Dashboard, developer app pins, smoother Alt+Tab window cycling, simpler title-bar dragging, a lighter lock screen, lid-open display activation and optional faster suspend. Launchpad stays ready in memory, search updates without a debounce delay, and the dock queries Hyprland directly. A low-priority user timer warms up to 128 MiB of common application files only after the system has settled on AC and when pressure/temperature allow; these pages are reclaimable when other programs need RAM.
 
 Measured on the development laptop: repeat Launchpad opens took about 70–75 ms, compared with 600–770 ms before. These are launcher visibility timings, not timings for every application. Actual application startup still depends on storage and the application.
 
 The standard installer applies portable user files. System-wide lid handling, faster sleep and guarded login sessions are optional: see [system setup and today's changes](docs/2026-11-07.md). Hardware-specific F11/F12 workarounds are examples and are not enabled for other users.
 
 See [System Settings and desktop actions](docs/SYSTEM-SETTINGS.md) for supported Linux backends, optional tools, wallpaper sources and Apple-only limitations.
+
+System responsiveness work uses foreground CPU weights and pressure-aware background jobs. See [system performance, verification and rollback](docs/SYSTEM-PERFORMANCE.md); the HDD/boot root profile is explicit and hardware-specific.

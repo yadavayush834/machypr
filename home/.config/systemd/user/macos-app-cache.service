@@ -1,12 +1,15 @@
 [Unit]
-Description=Warm commonly used app files after sign-in
+Description=Warm bounded common app files only when the system is cool and idle
+
+ConditionACPower=true
 
 [Service]
 Type=oneshot
 ExecStart=%h/.local/bin/macos-app-cache
+Slice=background.slice
 Nice=19
 IOSchedulingClass=idle
 CPUWeight=10
 IOWeight=10
-MemoryMax=896M
+MemoryMax=192M
 TimeoutStartSec=90

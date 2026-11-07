@@ -15,6 +15,21 @@ def available_memory():
     return 0
 
 
+def pressure_reason(proc=Path('/proc'),thermal=Path('/sys/class/thermal')):
+    for name,threshold,kind in [('io',5.0,'full'),('memory',1.0,'some'),('cpu',35.0,'some')]:
+        try:
+            line=next(line for line in (proc/'pressure'/name).read_text().splitlines() if line.startswith(kind+' '))
+            average=float(next(v.split('=',1)[1] for v in line.split() if v.startswith('avg10=')))
+            if average>=threshold:return name+' pressure'
+        except (OSError,ValueError,StopIteration):pass
+    for folder in thermal.glob('thermal_zone*'):
+        try:
+            if 'pkg_temp' in (folder/'type').read_text() and int((folder/'temp').read_text())>=85000:
+                return 'CPU temperature'
+        except (OSError,ValueError):pass
+    return None
+
+
 def candidates():
     # Small common dependencies first, then editor and browser resources.
     for name in ('libgtk-3.so.0', 'libgdk-3.so.0', 'libQt6Core.so.6',
@@ -45,12 +60,16 @@ def candidates():
 
 
 def main():
+    reason=pressure_reason()
+    if reason:
+        print('Deferred app warmup: '+reason+'.',flush=True)
+        return
     started = time.monotonic()
     total = count = 0
     seen = set()
-    budget = 768 * MIB
+    budget = 128 * MIB
     for path in candidates():
-        if total >= budget or available_memory() < 3 * 1024 * MIB:
+        if total >= budget or available_memory() < 4 * 1024 * MIB:
             break
         try:
             resolved = path.resolve(strict=True)
@@ -58,10 +77,10 @@ def main():
                 continue
             seen.add(resolved)
             with resolved.open('rb', buffering=0) as source:
-                limit = min(os.fstat(source.fileno()).st_size, 256 * MIB, budget-total)
+                limit = min(os.fstat(source.fileno()).st_size, 32 * MIB, budget-total)
                 read = 0
                 while read < limit:
-                    if time.monotonic()-started > 75 or available_memory() < 3 * 1024 * MIB:
+                    if time.monotonic()-started > 45 or available_memory() < 4 * 1024 * MIB or pressure_reason():
                         print(f'Paused cache warmup after {total/MIB:.0f} MiB.', flush=True)
                         return
                     chunk = source.read(min(MIB, limit-read))

@@ -11,7 +11,7 @@ hl.config({
   blur={enabled=true,size=5,passes=2,vibrancy=0.16}},
  animations={enabled=true},dwindle={preserve_split=true},
  input={kb_layout="us",follow_mouse=0,touchpad={natural_scroll=true,tap_to_click=true}},
- misc={disable_hyprland_logo=true,force_default_wallpaper=0}
+ misc={disable_hyprland_logo=true,force_default_wallpaper=0,float_force_onscreen=2}
 })
 pcall(dofile, os.getenv("HOME") .. "/.config/hypr/wallpaper-colors.lua")
 hl.curve("macos", {type="bezier",points={{0.22,1},{0.36,1}}})
@@ -58,7 +58,7 @@ end
 hl.gesture({fingers=3,direction="horizontal",action="workspace"})
 
 -- macOS desktop: freely positioned windows and translucent desktop surfaces.
-hl.window_rule({match={class=".*"},float=true,size={1040,590},center=true})
+hl.window_rule({match={class=".*"},float=true,size={"monitor_w*0.85","monitor_h*0.80"},max_size={"monitor_w*0.95","monitor_h*0.85"},center=true})
 hl.layer_rule({match={namespace="waybar"},blur=true})
 hl.layer_rule({match={namespace="macos-dock"},blur=false})
 hl.bind("SUPER + Tab",hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-menu window"))

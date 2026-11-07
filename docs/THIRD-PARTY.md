@@ -37,3 +37,7 @@ uses WhiteSur.png.
 ## Original macOS wallpaper downloads
 
 `home/.local/share/macos-desktop/wallpapers.json` pins original Apple images mirrored by [LAYTAT/macOS-Wallpapers](https://github.com/LAYTAT/macOS-Wallpapers/tree/fae15d0c4fc58790bc93de33699e0adbb0ca987f). The downloader stores them only in the installing user's wallpaper folder. These images remain © Apple Inc.; no Apple wallpaper image is added to the repository or relicensed under MIT. The [512 Pixels archive](https://512pixels.net/projects/default-mac-wallpapers-in-5k/) supplied the release/variant reference. System Settings is an original GTK implementation informed by [Apple's documentation](https://support.apple.com/en-by/guide/mac-help/mh15217/mac) and the Tahoe screenshot library; no Apple application code or San Francisco font is bundled.
+
+## Refractive desktop renderer
+
+[HyprGlass](https://github.com/hyprnux/hyprglass), revision `dc00c628623e5e504b363e26dd489ee766d2fa12` from its Hyprland 0.57 branch, supplies the actual compositor shader. It is BSD-3-Clause; the installer retains `LICENSE-HyprGlass` beside the locally built library. The library is built against installed headers and is not bundled in this repository. Its own version/library checks remain enabled. The earlier JavaScript/WebGL and KDE references remain references; they are not injected into applications. This is an independent Linux material implementation, not Apple's private Liquid Glass renderer.

@@ -10,3 +10,7 @@ TimeoutStartSec=3min
 Restart=on-failure
 RestartSec=5min
 Nice=15
+Slice=background.slice
+CPUWeight=10
+IOWeight=10
+IOSchedulingClass=idle

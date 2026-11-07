@@ -5,7 +5,10 @@ gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
 from gi.repository import Gtk,Gdk,GtkLayerShell
 import cairo
 home=Path.home();kind=sys.argv[1] if len(sys.argv)>1 else 'apple'
-def run(args): subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+def run(args):
+ launcher=home/'.local/bin/macos-app-launch'
+ command=[str(launcher),*args] if launcher.is_file() else args
+ subprocess.Popen(command,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 def local(name):return str(home/'.local/bin'/name)
 try: active=json.loads(subprocess.check_output(['hyprctl','activewindow','-j']))
 except Exception:active={}

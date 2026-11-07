@@ -2,5 +2,5 @@
 Description=Show pending updates shortly after desktop sign-in
 
 [Timer]
-OnActiveSec=90s
+OnActiveSec=5min
 AccuracySec=5s

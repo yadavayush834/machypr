@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+"""Prioritize the focused app using reversible systemd CPU weights, without killing tasks."""
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import selectors
+import signal
+import socket
+import time
+
+
+def cgroup_unit(pid, root=Path('/proc')):
+    try:
+        line=next(line for line in (root/str(int(pid))/'cgroup').read_text().splitlines() if line.startswith('0::'))
+    except (OSError,ValueError,StopIteration):return None
+    parts=line[3:].split('/')
+    marker=f'user@{os.getuid()}.service'
+    if marker not in parts:return None
+    children=parts[parts.index(marker)+1:]
+    if not children:return None
+    unit=children[-1]
+    if not unit.endswith(('.scope','.service')):return None
+    # Never reprioritize the compositor, audio services, user manager or session itself.
+    if unit.endswith('.service') and 'app.slice' not in children:return None
+    return unit,children
+
+
+def related_units(unit,all_units):
+    if re.fullmatch(r'kitty-\d+-\d+\.scope',unit):
+        return {name for name in all_units if re.fullmatch(r'kitty-\d+-\d+\.scope',name)}|{unit}
+    match=re.fullmatch(r'(app-flatpak-.+)-\d+\.scope',unit)
+    if match:return {name for name in all_units if name.startswith(match[1]+'-') and name.endswith('.scope')}|{unit}
+    return {unit}
+
+
+class Policy:
+    def __init__(self,backend,state):
+        self.backend=backend;self.state=Path(state);self.original={};self.current=set();self.changes=0
+        try:stale=json.loads(self.state.read_text())
+        except (OSError,ValueError):stale={}
+        for unit,weight in stale.items():
+            try:self.backend.set(unit,int(weight))
+            except Exception:pass
+        self.state.parent.mkdir(parents=True,exist_ok=True)
+        self.save()
+
+    def save(self):
+        tmp=self.state.with_suffix('.tmp');tmp.write_text(json.dumps(self.original,sort_keys=True));tmp.replace(self.state)
+
+    def focus(self,units):
+        units=set(units)
+        for unit in set(self.original)-units:
+            if unit in self.original:
+                try:self.backend.set(unit,self.original[unit]);self.changes+=1
+                except Exception:continue
+                self.original.pop(unit,None)
+        for unit in units-self.current:
+            try:
+                weight=self.backend.get(unit)
+                self.original[unit]=weight;self.save()
+                self.backend.set(unit,max(weight,300));self.changes+=1
+            except Exception:self.original.pop(unit,None)
+        self.current=units & set(self.original);self.save()
+
+    def close(self):
+        self.focus(set())
+        if not self.original:self.state.unlink(missing_ok=True)
+
+
+class Systemd:
+    def __init__(self):
+        from gi.repository import Gio,GLib
+        self.Gio=Gio;self.GLib=GLib;self.bus=Gio.bus_get_sync(Gio.BusType.SESSION,None)
+    def call(self,method,args=None):
+        return self.bus.call_sync('org.freedesktop.systemd1','/org/freedesktop/systemd1','org.freedesktop.systemd1.Manager',method,args,None,self.Gio.DBusCallFlags.NONE,3000,None).unpack()
+    def units(self):return {row[0] for row in self.call('ListUnits')[0] if row[3] in ('running','active')}
+    def get(self,unit):
+        obj=self.call('GetUnit',self.GLib.Variant('(s)',(unit,)))[0]
+        kind='Scope' if unit.endswith('.scope') else 'Slice' if unit.endswith('.slice') else 'Service'
+        interface='org.freedesktop.systemd1.'+kind
+        value=self.bus.call_sync('org.freedesktop.systemd1',obj,'org.freedesktop.DBus.Properties','Get',self.GLib.Variant('(ss)',(interface,'CPUWeight')),None,self.Gio.DBusCallFlags.NONE,3000,None).unpack()[0]
+        return 100 if int(value)==2**64-1 else int(value)
+    def set(self,unit,weight):
+        self.call('SetUnitProperties',self.GLib.Variant('(sba(sv))',(unit,True,[('CPUWeight',self.GLib.Variant('t',weight))])))
+
+
+def active(signature):
+    path=Path(os.environ.get('XDG_RUNTIME_DIR',f'/run/user/{os.getuid()}'))/'hypr'/signature/'.socket.sock'
+    with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as sock:
+        sock.settimeout(2);sock.connect(str(path));sock.sendall(b'j/activewindow');chunks=[]
+        while chunk:=sock.recv(65536):chunks.append(chunk)
+    return json.loads(b''.join(chunks))
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--status',action='store_true');args=parser.parse_args()
+    runtime=Path(os.environ.get('XDG_RUNTIME_DIR',f'/run/user/{os.getuid()}'))/'macos-responsiveness'
+    status_path=runtime/'status.json'
+    if args.status:
+        print(status_path.read_text() if status_path.exists() else json.dumps({'running':False}));return
+    runtime.mkdir(parents=True,exist_ok=True)
+    signature=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE','')
+    if not signature:raise RuntimeError('The Hyprland session environment has not been imported.')
+    backend=Systemd();policy=Policy(backend,runtime/'weights.json');running=[True]
+    signal.signal(signal.SIGTERM,lambda *_:running.__setitem__(0,False));signal.signal(signal.SIGINT,lambda *_:running.__setitem__(0,False))
+    last_focus=None;last_address=b'';last_poll=0;last_refresh=0;events=None;buffer=b''
+    try:
+        while running[0]:
+            if events is None:
+                try:
+                    events=socket.socket(socket.AF_UNIX,socket.SOCK_STREAM);events.settimeout(1)
+                    events.connect(str(runtime.parent/'hypr'/signature/'.socket2.sock'))
+                except OSError:
+                    if events:events.close()
+                    events=None;time.sleep(1);continue
+            now=time.monotonic();refresh=now-last_poll>=5
+            try:
+                chunk=events.recv(32768)
+                if not chunk:events.close();events=None;continue
+                buffer+=chunk
+                while b'\n' in buffer:
+                    line,buffer=buffer.split(b'\n',1)
+                    if line.startswith(b'activewindowv2>>'):
+                        address=line.split(b'>>',1)[1].strip().removeprefix(b'0x')
+                        if address!=last_address:refresh=True
+                    elif line.startswith((b'openwindow>>',b'closewindow>>')):refresh=True
+            except socket.timeout:pass
+            except OSError:events.close();events=None;continue
+            if not refresh:continue
+            delay=0.2-(now-last_refresh)
+            if delay>0:time.sleep(delay)
+            now=time.monotonic()
+            last_refresh=now
+            periodic=now-last_poll>=5
+            last_poll=now if periodic else last_poll
+            try:
+                window=active(signature);pid=window.get('pid');unit=cgroup_unit(pid) if pid else None
+                last_address=window.get('address','').removeprefix('0x').encode()
+                focus=(pid,window.get('class',''))
+                if focus==last_focus and not periodic:continue
+                last_focus=focus
+                desired=set()
+                if unit:
+                    parent=Path('/sys/fs/cgroup')/f'user.slice/user-{os.getuid()}.slice/user@{os.getuid()}.service'
+                    directory=parent.joinpath(*unit[1][:-1])
+                    available={entry.name for entry in directory.iterdir() if entry.name.endswith('.scope')}
+                    desired=related_units(unit[0],available)
+                    # Boost the active branch as well as its leaf; weights are hierarchical.
+                    if unit[1][0] in ('app.slice','session.slice'):desired.add(unit[1][0])
+                if desired!=policy.current:policy.focus(desired)
+                status={'running':True,'focused_class':window.get('class',''),'weighted_units':sorted(desired),'weight_changes':policy.changes,'policy':'relative CPU weights; no CPU caps or process termination'}
+                temp=status_path.with_suffix('.tmp');temp.write_text(json.dumps(status,indent=2)+'\n');temp.replace(status_path)
+            except (OSError,RuntimeError,ValueError) as error:
+                print('Could not update foreground priority:',type(error).__name__,flush=True)
+    finally:
+        if events:events.close()
+        policy.close();status_path.write_text(json.dumps({'running':False})+'\n')
+
+
+if __name__=='__main__':main()

@@ -2,6 +2,6 @@
 Description=Delay app file warmup until the desktop has settled
 
 [Timer]
-OnActiveSec=45s
+OnActiveSec=5min
 AccuracySec=5s
 Unit=macos-app-cache.service

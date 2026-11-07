@@ -1,0 +1,17 @@
+[Unit]
+Description=Give focused applications reversible relative CPU priority
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/macos-responsiveness
+ExecStartPost=-%h/.local/bin/macos-performance-report --save
+Restart=on-failure
+RestartSec=3
+Slice=background.slice
+CPUWeight=20
+MemoryMax=96M
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=graphical-session.target

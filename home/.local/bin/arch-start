@@ -47,4 +47,4 @@ fi
 systemctl --user restart mac-os-updates.timer >/dev/null 2>&1 &
 
 # Prepare the launcher and app file cache outside the login critical path.
-systemctl --user start macos-launchpad.service macos-app-cache.timer >/dev/null 2>&1 &
+systemctl --user start macos-launchpad.service macos-app-cache.timer macos-responsiveness.service >/dev/null 2>&1 &

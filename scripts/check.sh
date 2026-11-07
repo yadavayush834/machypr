@@ -19,4 +19,5 @@ python3 "$root/scripts/test-glass.py"
 python3 "$root/scripts/test-session.py"
 python3 "$root/scripts/test-settings.py"
 python3 "$root/scripts/test-desktop-model.py"
+python3 "$root/scripts/test-performance.py"
 echo 'All checks passed.'

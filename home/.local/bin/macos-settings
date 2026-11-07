@@ -112,6 +112,9 @@ class Settings(Gtk.Application):
         self.window.set_default_size(940, 680)
         self.window.set_size_request(820, 500)
         self.window.set_name('macos-settings')
+        self.window.set_app_paintable(True)
+        visual=self.window.get_screen().get_rgba_visual()
+        if visual:self.window.set_visual(visual)
         self.window.connect('key-press-event', self.keys)
         root=box(False); self.window.add(root)
         sidebar=box(True,10);sidebar.set_size_request(236,-1);sidebar.get_style_context().add_class('sidebar')
@@ -155,6 +158,7 @@ class Settings(Gtk.Application):
         self.content=box(True,16);self.content.set_margin_start(28);self.content.set_margin_end(28);self.content.set_margin_top(18);self.content.set_margin_bottom(28);scroller.add(self.content)
         self.css=Gtk.CssProvider();Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),self.css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+60)
         self.theme_state=None;self.theme();GLib.timeout_add_seconds(2,self.theme)
+        self.glass_css=M['helper']('macos-glass')['attach']()
         self.window.show_all();self.notice.hide();self.no_results.hide();self.open_page('general')
 
     def theme(self):
@@ -430,7 +434,7 @@ class Settings(Gtk.Application):
             group.pack_start(button,True,True,0)
         self.content.pack_start(label('Auto uses Light from 7 AM to 7 PM and Dark overnight.','muted',True),False,False,0)
         controls=self.section('Window Appearance')
-        self.toggle(controls,'Liquid Glass',M['helper']('macos-glass')['enabled'](),lambda v:M['command'](BIN/'macos-glass','on' if v else 'off'),'Frosted desktop panels; application content stays opaque.')
+        self.toggle(controls,'Liquid Glass',M['helper']('macos-glass')['enabled'](),lambda v:M['command'](BIN/'macos-glass','on' if v else 'off'),'Compositor refraction when HyprGlass is installed. Standard apps use 92% opacity; fullscreen stays opaque.')
         def render(values):
             self.hypr_switch(controls,'Window Blur','blur',values)
             if values['rounding'] is not None:self.scale(controls,'Corner Radius',values['rounding'],0,30,lambda v:M['set_option']('rounding',int(v)))
