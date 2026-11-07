@@ -104,3 +104,7 @@ end
 
 -- Restore the display immediately on lid open, including at the lock screen.
 hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd('hyprctl dispatch \'hl.dsp.dpms({ action = "enable" })\''), {locked=true})
+
+-- User changes made through System Settings.
+pcall(dofile,os.getenv('HOME')..'/.config/hypr/settings-overrides.lua')
+pcall(dofile,os.getenv('HOME')..'/.config/hypr/display-settings.lua')

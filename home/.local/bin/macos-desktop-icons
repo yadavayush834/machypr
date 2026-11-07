@@ -5,10 +5,12 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import runpy
 import gi
 gi.require_version('Gtk','3.0');gi.require_version('GtkLayerShell','0.1')
 from gi.repository import Gtk,Gdk,Gio,GLib,Pango,GtkLayerShell as Layer
 home=Path.home()
+MODEL=runpy.run_path(str(Path(__file__).with_name("macos-desktop-model")))
 lock=open(Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'))/'macos-desktop-icons.lock','w')
 try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
 except BlockingIOError:raise SystemExit(0)
@@ -51,6 +53,40 @@ def select(name):
  selected=name
  if name in items:items[name].get_style_context().add_class('selected');items[name].grab_focus()
 
+def report_error(message):
+ dialog=Gtk.MessageDialog(transient_for=win,modal=True,message_type=Gtk.MessageType.ERROR,buttons=Gtk.ButtonsType.CLOSE,text='Could not change desktop item')
+ dialog.format_secondary_text(str(message));dialog.run();dialog.destroy()
+
+def rename_item(name):
+ label=name
+ if name.endswith('.desktop'):
+  app=Gio.DesktopAppInfo.new_from_filename(str(desktop/name))
+  if app:label=app.get_display_name()
+ dialog=Gtk.Dialog(title='Rename',transient_for=win,modal=True)
+ dialog.add_buttons('Cancel',Gtk.ResponseType.CANCEL,'Rename',Gtk.ResponseType.OK)
+ dialog.set_default_response(Gtk.ResponseType.OK)
+ entry=Gtk.Entry(text=label);entry.set_activates_default(True);entry.set_margin_start(20);entry.set_margin_end(20);entry.set_margin_top(16);entry.set_margin_bottom(16)
+ dialog.get_content_area().add(entry);dialog.show_all();entry.grab_focus();entry.select_region(0,-1)
+ response=dialog.run();new_label=entry.get_text();dialog.destroy()
+ if response!=Gtk.ResponseType.OK:return
+ try:
+  new_name=MODEL['rename_item'](desktop,name,new_label)
+  if name in positions:positions[new_name]=positions.pop(name)
+  save_positions();select(None);refresh()
+ except (OSError,ValueError,KeyError) as error:report_error(error)
+
+def remove_item(name):
+ try:
+  MODEL['remove_item'](desktop,name)
+  positions.pop(name,None);save_positions();select(None);refresh()
+ except (OSError,ValueError,GLib.Error) as error:report_error(error)
+
+def item_menu(widget,event,name):
+ menu=Gtk.Menu()
+ for label,action in [('Open',lambda *_:open_item(name)),('Rename…',lambda *_:rename_item(name)),('Remove from Desktop' if name.endswith('.desktop') or (desktop/name).is_symlink() else 'Move to Trash',lambda *_:remove_item(name))]:
+  item=Gtk.MenuItem(label=label);item.connect('activate',action);menu.append(item)
+ menu.show_all();menu.popup_at_pointer(event);return menu
+
 def open_item(name):
  filename=str(desktop/name)
  try:
@@ -62,6 +98,8 @@ def open_item(name):
 
 def press(widget,event,name):
  global drag
+ if event.button==3:
+  select(name);item_menu(widget,event,name);return True
  if event.button!=1:return False
  select(name)
  if event.type==Gdk.EventType.DOUBLE_BUTTON_PRESS:
@@ -165,7 +203,7 @@ def context(_,event):
   target=desktop/'New Folder';i=2
   while target.exists():target=desktop/('New Folder '+str(i));i+=1
   positions[target.name]=list(clamp(event.x,event.y));target.mkdir();save_positions()
- for label,action in [('Open Desktop Folder',lambda *_:subprocess.Popen(['dolphin',str(desktop)])),('New Folder',new_folder),('Refresh',refresh)]:
+ for label,action in [('Open Desktop Folder',lambda *_:subprocess.Popen(['dolphin',str(desktop)])),('New Folder',new_folder),('Wallpaper…',lambda *_:subprocess.Popen([str(home/'.local/bin/macos-settings'),'wallpaper'])),('System Settings…',lambda *_:subprocess.Popen([str(home/'.local/bin/macos-settings')])),('Refresh',refresh)]:
   item=Gtk.MenuItem(label=label);item.connect('activate',action);menu.append(item)
  menu.show_all();menu.popup_at_pointer(event);return True
 win.add_events(Gdk.EventMask.BUTTON_PRESS_MASK);win.connect('button-press-event',context)

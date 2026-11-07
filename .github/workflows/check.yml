@@ -8,6 +8,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install validators
-        run: sudo apt-get update && sudo apt-get install -y shellcheck desktop-file-utils
+        run: sudo apt-get update && sudo apt-get install -y shellcheck desktop-file-utils python3-gi python3-pil gir1.2-glib-2.0
       - name: Validate and test isolated installation/restore
-        run: bash scripts/check.sh
+        run: PATH=/usr/bin:$PATH bash scripts/check.sh

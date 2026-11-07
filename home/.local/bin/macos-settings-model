@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""Real Linux backends for System Settings. No shell interpolation or fake state."""
+import json
+import os
+from pathlib import Path
+import platform
+import re
+import runpy
+import shutil
+import socket
+import subprocess
+import threading
+
+ROOT = Path(__file__).absolute().parent
+LOCK = threading.RLock()
+OPTIONS = {
+ 'animations': ('animations:enabled', bool, None),
+ 'blur': ('decoration:blur:enabled', bool, None),
+ 'rounding': ('decoration:rounding', int, (0, 30)),
+ 'follow_mouse': ('input:follow_mouse', int, (0, 1)),
+ 'kb_layout': ('input:kb_layout', str, None),
+ 'repeat_rate': ('input:repeat_rate', int, (1, 100)),
+ 'repeat_delay': ('input:repeat_delay', int, (100, 1500)),
+ 'sensitivity': ('input:sensitivity', float, (-1, 1)),
+ 'natural_scroll': ('input:natural_scroll', bool, None),
+ 'touchpad_natural_scroll': ('input:touchpad:natural_scroll', bool, None),
+ 'tap_to_click': ('input:touchpad:tap_to_click', bool, None),
+ 'disable_while_typing': ('input:touchpad:disable_while_typing', bool, None),
+ 'scroll_factor': ('input:scroll_factor', float, (0.2, 3)),
+}
+
+
+def command(*args, timeout=12, check=True):
+    try:
+        p = subprocess.run([str(a) for a in args], capture_output=True, text=True, timeout=timeout)
+    except FileNotFoundError:
+        raise RuntimeError(f'{args[0]} is not installed.') from None
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f'{args[0]} did not respond. Try again.') from None
+    if check and p.returncode:
+        raise RuntimeError((p.stderr.strip() or p.stdout.strip() or f'{args[0]} failed.')[:600])
+    return p.stdout.strip()
+
+
+def helper(name):
+    return runpy.run_path(str(ROOT/name))
+
+
+def read_json(path, default=None):
+    try: return json.loads(Path(path).read_text())
+    except (OSError, ValueError): return {} if default is None else default
+
+
+def atomic_json(path, value):
+    path = Path(path); path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix('.tmp'); tmp.write_text(json.dumps(value, indent=2)+'\n'); tmp.replace(path)
+
+
+def option(name):
+    data = json.loads(command('hyprctl', 'getoption', name, '-j'))
+    for key in ('bool', 'int', 'float', 'str'):
+        if key in data and data[key] is not None:
+            # The JSON contains one typed field for the option's actual type.
+            return data[key]
+    raise RuntimeError(f'Hyprland did not return {name}.')
+
+
+def lua_table(values):
+    tree = {}
+    for name, value in values.items():
+        target = tree
+        parts = OPTIONS[name][0].split(':')
+        for part in parts[:-1]: target = target.setdefault(part, {})
+        target[parts[-1]] = value
+    def encode(value):
+        if isinstance(value, dict): return '{'+','.join(k+'='+encode(v) for k, v in value.items())+'}'
+        return json.dumps(value)
+    return 'hl.config('+encode(tree)+')\n'
+
+
+def set_option(name, value, home=None, session=True):
+    home = Path.home() if home is None else Path(home)
+    if name not in OPTIONS: raise ValueError('Unknown desktop setting.')
+    key, kind, limits = OPTIONS[name]
+    if kind is bool and type(value) is not bool: raise ValueError('Expected a switch value.')
+    if kind in (int, float):
+        value = kind(value)
+        if not limits[0] <= value <= limits[1]: raise ValueError('Value is outside the supported range.')
+    if kind is str and not re.fullmatch(r'[a-z]{2}(,[a-z]{2})*', value):
+        raise ValueError('Use keyboard layout codes such as us, gb, in or de.')
+    with LOCK:
+        path = home/'.config/macos-desktop/settings.json'
+        values = read_json(path); values = {k:v for k,v in values.items() if k in OPTIONS}
+        previous = dict(values); values[name] = value
+        conf = home/'.config/hypr/settings-overrides.lua'; conf.parent.mkdir(parents=True, exist_ok=True)
+        if session:
+            result = command('hyprctl', 'eval', lua_table({name: value}))
+            if 'error' in result.lower(): raise RuntimeError(result)
+        try:
+            conf.write_text('-- Settings app overrides; only explicitly changed settings.\n'+lua_table(values))
+            atomic_json(path, values)
+        except OSError:
+            conf.write_text(lua_table(previous))
+            raise
+    return value
+
+
+def snapshot():
+    result = {}
+    for name, (key, _, _) in OPTIONS.items():
+        try: result[name] = option(key)
+        except (RuntimeError, ValueError): result[name] = None
+    return result
+
+
+def sound_state():
+    raw = command('wpctl', 'get-volume', '@DEFAULT_AUDIO_SINK@')
+    match = re.search(r'Volume:\s*([\d.]+)', raw)
+    return {'volume': float(match[1]) if match else 0, 'muted': '[MUTED]' in raw}
+
+
+def audio_devices(kind):
+    return json.loads(command('pactl', '-f', 'json', 'list', 'sinks' if kind == 'output' else 'sources'))
+
+
+def set_volume(value, source=False):
+    value = max(0, min(1, float(value)))
+    return command('wpctl', 'set-volume', '@DEFAULT_AUDIO_SOURCE@' if source else '@DEFAULT_AUDIO_SINK@', str(value))
+
+
+def brightness():
+    maximum = int(command('brightnessctl', 'max'))
+    return round(int(command('brightnessctl', 'get')) / maximum * 100) if maximum else 0
+
+
+def wifi_state():
+    if command('systemctl', 'is-active', 'NetworkManager', check=False) == 'active':
+        active = command('nmcli', 'radio', 'wifi') == 'enabled'
+        rows = command('nmcli', '-t', '--escape', 'no', '-f', 'IN-USE,SIGNAL,SECURITY,SSID', 'device', 'wifi', 'list')
+        networks = []
+        for line in rows.splitlines():
+            fields = line.split(':', 3)
+            if len(fields) == 4 and fields[3]:
+                networks.append(dict(name=fields[3], connected=fields[0]=='*', signal=int(fields[1] or 0), secure=bool(fields[2]), device=''))
+        unique = {}; [unique.setdefault(n['name'], n) for n in networks]
+        return {'enabled': active, 'backend': 'NetworkManager', 'networks': list(unique.values())}
+    if command('systemctl', 'is-active', 'iwd', check=False) == 'active':
+        model = helper('macos-wifi-model'); data = model['networks'](rescan=True)
+        powered = False
+        from gi.repository import Gio
+        bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+        objects = model['call'](bus, '/', 'org.freedesktop.DBus.ObjectManager', 'GetManagedObjects')[0]
+        for props in objects.values():
+            powered |= props.get('net.connman.iwd.Device', {}).get('Powered', False)
+        return dict(data, enabled=powered, backend='iwd')
+    raise RuntimeError('Start NetworkManager or iwd to manage Wi-Fi.')
+
+
+def wifi_power(enabled):
+    if command('systemctl', 'is-active', 'NetworkManager', check=False) == 'active':
+        return command('nmcli', 'radio', 'wifi', 'on' if enabled else 'off')
+    from gi.repository import Gio, GLib
+    model = helper('macos-wifi-model'); bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+    objects = model['call'](bus, '/', 'org.freedesktop.DBus.ObjectManager', 'GetManagedObjects')[0]
+    devices = [p for p,v in objects.items() if 'net.connman.iwd.Device' in v]
+    if not devices: raise RuntimeError('No wireless adapter detected.')
+    for path in devices:
+        model['call'](bus, path, 'org.freedesktop.DBus.Properties', 'Set', GLib.Variant('(ssv)', ('net.connman.iwd.Device', 'Powered', GLib.Variant('b', enabled))))
+
+
+def bluetooth_state():
+    info = command('bluetoothctl', 'show')
+    devices = []
+    for line in command('bluetoothctl', 'devices').splitlines():
+        match = re.match(r'Device ([0-9A-Fa-f:]{17}) (.*)', line)
+        if match:
+            props = command('bluetoothctl', 'info', match[1])
+            devices.append({'address':match[1], 'name':match[2], 'connected':'Connected: yes' in props, 'paired':'Paired: yes' in props})
+    return {'enabled':'Powered: yes' in info, 'devices':devices}
+
+
+def system_info():
+    memory = {}
+    for line in Path('/proc/meminfo').read_text().splitlines():
+        k,v = line.split(':',1); memory[k] = v.strip()
+    cpu = next((line.split(':',1)[1].strip() for line in Path('/proc/cpuinfo').read_text().splitlines() if line.startswith('model name')), platform.machine())
+    disk = shutil.disk_usage(Path.home())
+    return {'hostname':socket.gethostname(), 'system':'Arch Linux', 'kernel':platform.release(), 'cpu':cpu, 'memory':round(int(memory['MemTotal'].split()[0])/1024/1024,1), 'disk':disk, 'user':os.environ.get('USER','User')}
+
+
+def lock_timeout(home=None):
+    home = Path.home() if home is None else Path(home)
+    path = home/'.config/hypr/hypridle.conf'
+    text = path.read_text() if path.exists() else ''
+    match = re.search(r'listener\s*\{[^}]*?timeout\s*=\s*(\d+)[^}]*?on-timeout\s*=\s*loginctl lock-session',text,re.S)
+    return int(match[1]) if match else None
+
+
+def set_lock_timeout(seconds, home=None, session=True):
+    home = Path.home() if home is None else Path(home)
+    if seconds not in (60, 120, 300, 600, 900, 1800, 3600): raise ValueError('Unsupported lock timeout.')
+    path = home/'.config/hypr/hypridle.conf'; text = path.read_text()
+    pattern = r'(listener\s*\{[^}]*?timeout\s*=\s*)\d+(?=[^}]*?on-timeout\s*=\s*loginctl lock-session)'
+    changed, count = re.subn(pattern,lambda m:m[1]+str(seconds),text,count=1,flags=re.S)
+    if not count: raise RuntimeError('No automatic screen-lock listener found in hypridle.conf.')
+    backup = path.with_suffix('.conf.before-settings')
+    if not backup.exists(): backup.write_text(text)
+    path.write_text(changed)
+    if session:
+        command('pkill','-x','hypridle',check=False)
+        subprocess.Popen(['hypridle'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+
+
+def open_terminal(args, title='System Settings'):
+    if not args or not shutil.which(args[0]): raise RuntimeError(f'{args[0] if args else "This tool"} is not installed.')
+    # Keep output and errors visible after short-lived commands finish.
+    subprocess.Popen(['kitty','--title',title,'bash','-c','"$@"; status=$?; printf "\\nPress Enter to close. "; read -r _; exit "$status"','settings',*args],start_new_session=True)
+
+
+def launch(args):
+    executable = args[0]
+    if not (Path(executable).is_file() or shutil.which(executable)):
+        raise RuntimeError(f'{executable} is not installed.')
+    subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+
+
+def dock_preferences(home=None):
+    home = Path.home() if home is None else Path(home)
+    data = read_json(home/'.config/macos-desktop/dock.json')
+    return {'auto_hide':data.get('auto_hide',True) is not False,
+            'magnification':data.get('magnification',True) is not False,
+            'size':max(32,min(64,int(data.get('size',52))))}
+
+
+def set_dock(name, value, home=None):
+    home = Path.home() if home is None else Path(home)
+    if name not in ('auto_hide','magnification','size'): raise ValueError('Unknown Dock preference.')
+    if name == 'size':
+        value=int(value)
+        if not 32<=value<=64: raise ValueError('Dock size must be between 32 and 64.')
+    elif type(value) is not bool: raise ValueError('Expected a switch value.')
+    with LOCK:
+        values=dock_preferences(home);values[name]=value
+        atomic_json(home/'.config/macos-desktop/dock.json',values)

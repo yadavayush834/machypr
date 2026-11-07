@@ -113,6 +113,7 @@ if ! $config_only; then
  bash "$root/scripts/install-themes.sh"
  bash "$root/scripts/install-window-controls.sh"
  python "$root/scripts/install-sounds.py"
+ python "$root/home/.local/bin/macos-wallpapers" --install || echo "Some wallpapers could not download; retry from System Settings → Wallpaper."
 fi
 mode=full
 $desktop_only && mode=desktop

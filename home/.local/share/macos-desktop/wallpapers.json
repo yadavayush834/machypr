@@ -1,0 +1,161 @@
+{
+  "source": "https://github.com/LAYTAT/macOS-Wallpapers",
+  "revision": "fae15d0c4fc58790bc93de33699e0adbb0ca987f",
+  "copyright": "Original wallpapers \u00a9 Apple Inc. Downloaded to the user\u2019s machine; not bundled in MacHypr.",
+  "wallpapers": [
+    {
+      "id": "tahoe-light",
+      "name": "Tahoe Light",
+      "collection": "Tahoe",
+      "filename": "26-Tahoe-Light-6K.png",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/26-Tahoe-Light-6K.png"
+    },
+    {
+      "id": "tahoe-dark",
+      "name": "Tahoe Dark",
+      "collection": "Tahoe",
+      "filename": "26-Tahoe-Dark-6K.png",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/26-Tahoe-Dark-6K.png"
+    },
+    {
+      "id": "tahoe-day",
+      "name": "Tahoe Day",
+      "collection": "Tahoe",
+      "filename": "26-Tahoe-Beach-Day.png",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/26-Tahoe-Beach-Day.png"
+    },
+    {
+      "id": "tahoe-night",
+      "name": "Tahoe Night",
+      "collection": "Tahoe",
+      "filename": "26-Tahoe-Beach-Night.png",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/26-Tahoe-Beach-Night.png"
+    },
+    {
+      "id": "sequoia-light",
+      "name": "Sequoia Light",
+      "collection": "Sequoia",
+      "filename": "15-Sequoia-Light-6K.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/15-Sequoia-Light-6K.jpg"
+    },
+    {
+      "id": "sequoia-dark",
+      "name": "Sequoia Dark",
+      "collection": "Sequoia",
+      "filename": "15-Sequoia-Dark-6K.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/15-Sequoia-Dark-6K.jpg"
+    },
+    {
+      "id": "sonoma-light",
+      "name": "Sonoma Light",
+      "collection": "Sonoma",
+      "filename": "14-Sonoma-Light.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/14-Sonoma-Light.jpg"
+    },
+    {
+      "id": "sonoma-dark",
+      "name": "Sonoma Dark",
+      "collection": "Sonoma",
+      "filename": "14-Sonoma-Dark.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/14-Sonoma-Dark.jpg"
+    },
+    {
+      "id": "ventura-light",
+      "name": "Ventura Light",
+      "collection": "Ventura",
+      "filename": "13-Ventura-Light.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/13-Ventura-Light.jpg"
+    },
+    {
+      "id": "ventura-dark",
+      "name": "Ventura Dark",
+      "collection": "Ventura",
+      "filename": "13-Ventura-Dark.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/13-Ventura-Dark.jpg"
+    },
+    {
+      "id": "monterey-light",
+      "name": "Monterey Light",
+      "collection": "Monterey",
+      "filename": "12-Light.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/12-Light.jpg"
+    },
+    {
+      "id": "monterey-dark",
+      "name": "Monterey Dark",
+      "collection": "Monterey",
+      "filename": "12-Dark.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/12-Dark.jpg"
+    },
+    {
+      "id": "big-sur-day",
+      "name": "Big Sur Day",
+      "collection": "Big Sur",
+      "filename": "11-0-Day.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/11-0-Day.jpg"
+    },
+    {
+      "id": "big-sur-night",
+      "name": "Big Sur Night",
+      "collection": "Big Sur",
+      "filename": "11-0-Night.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/11-0-Night.jpg"
+    },
+    {
+      "id": "big-sur-graphic",
+      "name": "Big Sur Graphic",
+      "collection": "Big Sur",
+      "filename": "11-0-Color-Day.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/11-0-Color-Day.jpg"
+    },
+    {
+      "id": "catalina-day",
+      "name": "Catalina Day",
+      "collection": "Catalina",
+      "filename": "10-15-Day.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/10-15-Day.jpg"
+    },
+    {
+      "id": "catalina-night",
+      "name": "Catalina Night",
+      "collection": "Catalina",
+      "filename": "10-15-Night.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/10-15-Night.jpg"
+    },
+    {
+      "id": "mojave-day",
+      "name": "Mojave Day",
+      "collection": "Mojave",
+      "filename": "10-14-Day-6k.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/10-14-Day-6k.jpg"
+    },
+    {
+      "id": "mojave-night",
+      "name": "Mojave Night",
+      "collection": "Mojave",
+      "filename": "10-14-Night-6k.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/10-14-Night-6k.jpg"
+    },
+    {
+      "id": "high-sierra",
+      "name": "High Sierra",
+      "collection": "Classics",
+      "filename": "10-13-6k.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/10-13-6k.jpg"
+    },
+    {
+      "id": "yosemite",
+      "name": "Yosemite",
+      "collection": "Classics",
+      "filename": "10-10-6k.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/10-10-6k.jpg"
+    },
+    {
+      "id": "mavericks",
+      "name": "Mavericks",
+      "collection": "Classics",
+      "filename": "10-9-6k.jpg",
+      "url": "https://raw.githubusercontent.com/LAYTAT/macOS-Wallpapers/fae15d0c4fc58790bc93de33699e0adbb0ca987f/10-9-6k.jpg"
+    }
+  ]
+}

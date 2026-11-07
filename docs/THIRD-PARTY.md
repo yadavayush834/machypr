@@ -33,3 +33,7 @@ uses WhiteSur.png.
 - [MacTahoe icons](https://github.com/vinceliuice/MacTahoe-icon-theme), revision `839848b9a8a38a92a6936e30c4abe35cc6f2546d`: upstream local icon installer retains COPYING and AUTHORS.
 - `home/.local/bin/mac-os-checkupdates` derives from pacman-contrib checkupdates by Kyle Keen and other contributors, GPL-2.0-or-later. Its original notice is retained; see [license](LICENSE-checkupdates).
 - [MacDashboard](https://github.com/wildfellhall/MacDashboard) informed the local notes/dashboard concept. The GTK implementation is original and has no AI service. Glass references informed rim lighting and translucent layering; no browser shader runtime or KDE component is embedded. [Exact reference revisions](visual-sources.json).
+
+## Original macOS wallpaper downloads
+
+`home/.local/share/macos-desktop/wallpapers.json` pins original Apple images mirrored by [LAYTAT/macOS-Wallpapers](https://github.com/LAYTAT/macOS-Wallpapers/tree/fae15d0c4fc58790bc93de33699e0adbb0ca987f). The downloader stores them only in the installing user's wallpaper folder. These images remain © Apple Inc.; no Apple wallpaper image is added to the repository or relicensed under MIT. The [512 Pixels archive](https://512pixels.net/projects/default-mac-wallpapers-in-5k/) supplied the release/variant reference. System Settings is an original GTK implementation informed by [Apple's documentation](https://support.apple.com/en-by/guide/mac-help/mh15217/mac) and the Tahoe screenshot library; no Apple application code or San Francisco font is bundled.

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=System Settings
+Comment=Configure appearance, wallpaper, network, sound and this computer
+Exec=@HOME@/.local/bin/macos-settings
+Icon=preferences-system
+Type=Application
+Categories=Settings;DesktopSettings;
+Keywords=System;Settings;Wallpaper;Display;Sound;Keyboard;Mouse;Bluetooth;Wi-Fi;
+StartupWMClass=macos-settings
+StartupNotify=true

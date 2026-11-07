@@ -1,0 +1,731 @@
+#!/usr/bin/env python3
+"""MacHypr System Settings — native GTK controls backed by the running desktop."""
+from concurrent.futures import ThreadPoolExecutor
+import datetime
+import getpass
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import runpy
+import shutil
+import subprocess
+import sys
+import gi
+
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk, Gdk, Gio, GLib, GdkPixbuf, Pango
+
+BIN = Path(__file__).absolute().parent
+M = runpy.run_path(str(BIN/'macos-settings-model'))
+W = runpy.run_path(str(BIN/'macos-wallpapers'))
+HOME = Path.home()
+PAGES = [
+ ('wifi','Wi-Fi','network-wireless-symbolic','blue','wireless internet connection ssid'),
+ ('bluetooth','Bluetooth','bluetooth-symbolic','blue','devices pairing headphones'),
+ ('network','Network','network-workgroup-symbolic','blue','ethernet vpn address dns'),
+ ('battery','Battery','battery-good-symbolic','green','power charge energy low power profile'),
+ ('general','General','preferences-system-symbolic','gray','about storage software update date time language login sharing backup'),
+ ('accessibility','Accessibility','preferences-desktop-accessibility-symbolic','blue','reduce motion animations zoom cursor'),
+ ('appearance','Appearance','preferences-desktop-theme-symbolic','purple','light dark auto glass theme rounding'),
+ ('menubar','Menu Bar','view-more-symbolic','gray','control center clock status'),
+ ('desktop','Desktop & Dock','preferences-desktop-symbolic','blue','icons apps wallpaper click focus dock'),
+ ('displays','Displays','video-display-symbolic','blue','brightness resolution monitor scale'),
+ ('wallpaper','Wallpaper','preferences-desktop-wallpaper-symbolic','cyan','background photo picture tahoe sequoia sonoma'),
+ ('screensaver','Screen Saver','preferences-desktop-screensaver-symbolic','purple','idle lock screen timeout'),
+ ('spotlight','Spotlight','system-search-symbolic','gray','search launcher applications'),
+ ('notifications','Notifications','preferences-system-notifications-symbolic','red','alerts do not disturb dunst'),
+ ('sound','Sound','audio-volume-high-symbolic','red','volume output input microphone speakers mute effects'),
+ ('focus','Focus','weather-clear-night-symbolic','purple','do not disturb notifications pause'),
+ ('screentime','Screen Time','document-open-recent-symbolic','purple','uptime session activity'),
+ ('lock','Lock Screen','system-lock-screen-symbolic','gray','password timeout automatic idle'),
+ ('privacy','Privacy & Security','security-high-symbolic','blue','permissions camera microphone flatpak portal'),
+ ('password','Touch ID & Password','dialog-password-symbolic','gray','login fingerprint password'),
+ ('users','Users & Groups','system-users-symbolic','gray','account user group'),
+ ('accounts','Internet Accounts','mail-unread-symbolic','blue','email calendar accounts'),
+ ('keyboard','Keyboard','input-keyboard-symbolic','gray','repeat rate delay layout shortcuts'),
+ ('mouse','Mouse','input-mouse-symbolic','gray','tracking speed scrolling natural'),
+ ('trackpad','Trackpad','input-touchpad-symbolic','gray','tap click gestures natural scroll touchpad'),
+ ('printers','Printers & Scanners','printer-symbolic','gray','printing cups scanning'),
+ ('apple','Apple Account','avatar-default-symbolic','blue','icloud family sharing apple id'),
+ ('intelligence','Apple Intelligence & Siri','audio-input-microphone-symbolic','purple','assistant speech ai'),
+ ('game','Game Center','applications-games-symbolic','red','games steam'),
+ ('wallet','Wallet & Apple Pay','wallet-symbolic','gray','payments cards'),
+]
+
+
+def label(text, css=None, wrap=False):
+    widget = Gtk.Label(label=str(text), xalign=0)
+    widget.set_line_wrap(wrap)
+    if wrap: widget.set_max_width_chars(56)
+    if css: widget.get_style_context().add_class(css)
+    return widget
+
+
+def icon(name, size=20):
+    image = Gtk.Image.new_from_icon_name(name, Gtk.IconSize.DIALOG)
+    image.set_pixel_size(size)
+    return image
+
+
+def box(vertical=True, spacing=0):
+    return Gtk.Box(orientation=Gtk.Orientation.VERTICAL if vertical else Gtk.Orientation.HORIZONTAL, spacing=spacing)
+
+
+class Settings(Gtk.Application):
+    __gtype_name__ = "MacHyprSettingsApplication"
+    def __init__(self):
+        super().__init__(application_id='org.machypr.Settings', flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        self.pool = ThreadPoolExecutor(max_workers=4)
+        self.image_pool = ThreadPoolExecutor(max_workers=2)
+        self.image_jobs = []
+        self.jobs = []
+        self.window = None
+        self.generation = 0
+        self.pending = {}
+        self.history = []
+        self.history_index = -1
+        self.current_page = 'general'
+        self.alive = True
+        self.connect('shutdown', self.stop)
+
+    def stop(self, *_):
+        self.alive = False
+        self.pool.shutdown(wait=False, cancel_futures=True)
+        self.image_pool.shutdown(wait=False, cancel_futures=True)
+
+    def do_command_line(self, line):
+        args = line.get_arguments()[1:]
+        page = args[0].removeprefix('--page=') if args else 'general'
+        if page == '--page' and len(args)>1: page=args[1]
+        self.activate()
+        self.open_page(page if page in {p[0] for p in PAGES} else 'general')
+        return 0
+
+    def do_activate(self):
+        if self.window:
+            self.window.present(); return
+        self.window = Gtk.ApplicationWindow(application=self)
+        self.window.set_title('System Settings')
+        self.window.set_icon_name('preferences-system')
+        self.window.set_default_size(940, 680)
+        self.window.set_size_request(820, 500)
+        self.window.set_name('macos-settings')
+        self.window.connect('key-press-event', self.keys)
+        root=box(False); self.window.add(root)
+        sidebar=box(True,10);sidebar.set_size_request(236,-1);sidebar.get_style_context().add_class('sidebar')
+        root.pack_start(sidebar,False,False,0)
+        self.search=Gtk.SearchEntry(placeholder_text='Search'); self.search.set_margin_start(12);self.search.set_margin_end(12);self.search.set_margin_top(14)
+        self.search.get_accessible().set_name('Search System Settings')
+        sidebar.pack_start(self.search,False,False,0)
+        account=Gtk.Button(); account.get_style_context().add_class('account')
+        account_box=box(False,10);account_box.pack_start(icon('avatar-default',40),False,False,0)
+        names=box(True,2);names.pack_start(label(getpass.getuser().capitalize(),'account-name'),False,False,0);names.pack_start(label('Local Account','muted'),False,False,0)
+        account_box.pack_start(names,True,True,0);account.add(account_box);account.connect('clicked',lambda *_:self.open_page('users'))
+        sidebar.pack_start(account,False,False,0)
+        scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC);sidebar.pack_start(scroll,True,True,0)
+        self.nav=Gtk.ListBox();self.nav.set_selection_mode(Gtk.SelectionMode.SINGLE);scroll.add(self.nav)
+        self.nav_rows={}
+        for index,(key,title,image,color,keywords) in enumerate(PAGES):
+            row=Gtk.ListBoxRow();row.key=key;row.keywords=(title+' '+keywords).casefold()
+            content=box(False,9);content.set_margin_start(10);content.set_margin_end(8);content.set_margin_top(4);content.set_margin_bottom(4)
+            tile=Gtk.EventBox();tile.get_style_context().add_class('nav-icon');tile.get_style_context().add_class(color);tile.add(icon(image,17))
+            content.pack_start(tile,False,False,0);content.pack_start(label(title),True,True,0);row.add(content)
+            if index in (0,4,13,17,22,26):row.set_margin_top(10)
+            self.nav.add(row);self.nav_rows[key]=row
+        self.nav.set_filter_func(lambda row:all(word in row.keywords for word in self.search.get_text().casefold().split()))
+        self.nav.connect('row-activated',lambda _,row:self.open_page(row.key))
+        self.nav.connect('row-selected',self.selected)
+        self.search.connect('search-changed',self.search_changed)
+        self.search.connect('activate',self.first_result)
+        self.no_results=label('No matching settings','muted');self.no_results.set_margin_start(14);sidebar.pack_start(self.no_results,False,False,8)
+        right=box(True);right.get_style_context().add_class('main');root.pack_start(right,True,True,0)
+        toolbar=box(False,9);toolbar.get_style_context().add_class('toolbar')
+        self.back=Gtk.Button.new_from_icon_name('go-previous-symbolic',Gtk.IconSize.MENU);self.back.set_tooltip_text('Back');self.back.connect('clicked',lambda *_:self.go(-1))
+        self.forward=Gtk.Button.new_from_icon_name('go-next-symbolic',Gtk.IconSize.MENU);self.forward.set_tooltip_text('Forward');self.forward.connect('clicked',lambda *_:self.go(1))
+        toolbar.pack_start(self.back,False,False,0);toolbar.pack_start(self.forward,False,False,0)
+        self.title=label('General','toolbar-title');toolbar.pack_start(self.title,True,True,3)
+        refresh=Gtk.Button.new_from_icon_name('view-refresh-symbolic',Gtk.IconSize.MENU);refresh.set_tooltip_text('Refresh current settings');refresh.connect('clicked',lambda *_:self.open_page(self.current_page,False));toolbar.pack_end(refresh,False,False,0)
+        right.pack_start(toolbar,False,False,0)
+        self.notice=Gtk.InfoBar();self.notice.set_message_type(Gtk.MessageType.ERROR);self.notice.set_show_close_button(True);self.notice.connect('response',lambda *_:self.notice.hide())
+        self.notice_label=label('',wrap=True);self.notice.get_content_area().add(self.notice_label);right.pack_start(self.notice,False,False,0)
+        scroller=Gtk.ScrolledWindow();scroller.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC);right.pack_start(scroller,True,True,0)
+        self.scroller=scroller
+        self.content=box(True,16);self.content.set_margin_start(28);self.content.set_margin_end(28);self.content.set_margin_top(18);self.content.set_margin_bottom(28);scroller.add(self.content)
+        self.css=Gtk.CssProvider();Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),self.css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+60)
+        self.theme_state=None;self.theme();GLib.timeout_add_seconds(2,self.theme)
+        self.window.show_all();self.notice.hide();self.no_results.hide();self.open_page('general')
+
+    def theme(self):
+        if not self.alive:return False
+        appearance=M['helper']('macos-appearance')['current']()
+        if appearance==self.theme_state:return True
+        self.theme_state=appearance;dark=appearance=='dark'
+        bg,side,card,fg,muted,edge=('#202022','#29292c','#2d2d30','#f5f5f7','#b5b5bd','#454548') if dark else ('#f5f5f7','#e9e9ed','#ffffff','#202024','#62626a','#d9d9df')
+        self.css.load_from_data(f'''
+#macos-settings {{background:{bg};color:{fg};font-family:Inter,sans-serif;font-size:13px;}}
+#macos-settings label {{color:{fg};}}
+#macos-settings .sidebar {{background:{side};border-right:1px solid {edge};padding-bottom:12px;}}
+#macos-settings .sidebar list {{background:transparent;padding:0 10px;}}
+#macos-settings .sidebar row {{border-radius:7px;padding:0;min-height:32px;}}
+#macos-settings .sidebar row:selected {{background:#0a78f0;}}
+#macos-settings .sidebar row:selected label {{color:white;}}
+#macos-settings .nav-icon {{border-radius:6px;min-width:26px;min-height:26px;color:white;}}
+#macos-settings .nav-icon image {{color:white;}}
+#macos-settings .blue {{background:#1687f7;}} #macos-settings .cyan {{background:#087d9c;}}
+#macos-settings .purple {{background:#8c56dc;}} #macos-settings .red {{background:#df424b;}}
+#macos-settings .green {{background:#288b47;}} #macos-settings .gray {{background:#707078;}}
+#macos-settings .account {{background:transparent;border:0;box-shadow:none;margin:0 10px;padding:8px 5px;}}
+#macos-settings .account-name {{font-size:16px;font-weight:600;}}
+#macos-settings .toolbar {{padding:12px 18px;border-bottom:1px solid {edge};min-height:28px;}}
+#macos-settings .toolbar button {{padding:4px;min-width:22px;min-height:22px;background:transparent;border:0;box-shadow:none;}}
+#macos-settings .toolbar-title {{font-size:16px;font-weight:600;}}
+#macos-settings .page-title {{font-size:22px;font-weight:600;margin-top:4px;}}
+#macos-settings .section-title {{font-size:13px;font-weight:600;margin:9px 2px 0;}}
+#macos-settings .muted {{color:{muted};font-size:12px;}}
+#macos-settings .group {{background:{card};border:1px solid {edge};border-radius:10px;}}
+#macos-settings .setting-row {{padding:11px 13px;min-height:26px;}}
+#macos-settings .setting-row + .setting-row {{border-top:1px solid {edge};}}
+#macos-settings .setting-row button {{padding:3px 9px;}}
+#macos-settings .setting-row switch {{margin:0;}}
+#macos-settings button {{border-radius:6px;}}
+#macos-settings button:focus, #macos-settings entry:focus {{outline:2px solid #1687f7;outline-offset:1px;}}
+#macos-settings .wallpaper {{padding:4px;background:transparent;border:2px solid transparent;box-shadow:none;border-radius:9px;}}
+#macos-settings .wallpaper.selected {{border-color:#1687f7;}}
+#macos-settings .wallpaper label {{font-size:11px;}}
+#macos-settings .appearance {{padding:8px;background:{card};border:1px solid {edge};border-radius:9px;}}
+#macos-settings .appearance.selected {{border:2px solid #1687f7;padding:7px;}}
+#macos-settings .page-icon {{border-radius:14px;min-width:58px;min-height:58px;color:white;}}
+#macos-settings .page-icon image {{color:white;}}
+#macos-settings scale {{min-width:170px;}}
+#macos-settings scale value {{color:{fg};}}
+#macos-settings entry {{min-height:25px;}}
+'''.encode());return True
+
+    def selected(self,_,row):
+        if row and row.key!=self.current_page:self.open_page(row.key)
+
+    def search_changed(self,*_):
+        self.nav.invalidate_filter();query=self.search.get_text().casefold().split()
+        visible=any(all(w in row.keywords for w in query) for row in self.nav_rows.values())
+        self.no_results.set_visible(not visible)
+
+    def first_result(self,*_):
+        words=self.search.get_text().casefold().split()
+        row=next((r for r in self.nav_rows.values() if all(w in r.keywords for w in words)),None)
+        if row:self.open_page(row.key)
+
+    def keys(self,_,event):
+        if event.state&Gdk.ModifierType.CONTROL_MASK and event.keyval in (Gdk.KEY_f,Gdk.KEY_F):self.search.grab_focus();return True
+        if event.state&Gdk.ModifierType.MOD1_MASK and event.keyval in (Gdk.KEY_Left,Gdk.KEY_Right):self.go(-1 if event.keyval==Gdk.KEY_Left else 1);return True
+        if event.keyval==Gdk.KEY_Escape and self.search.get_text():self.search.set_text('');return True
+        return False
+
+    def go(self,delta):
+        target=self.history_index+delta
+        if 0<=target<len(self.history):self.history_index=target;self.open_page(self.history[target],False)
+
+    def error(self,error):
+        self.notice_label.set_text(str(error));self.notice.show_all()
+
+    def work(self,operation,done=None,widget=None,page_bound=True,image_job=False):
+        generation=self.generation
+        if widget:widget.set_sensitive(False)
+        future=(self.image_pool if image_job else self.pool).submit(operation)
+        self.jobs.append((generation,future))
+        if image_job:self.image_jobs.append(future)
+        def finish():
+            self.jobs=[(g,f) for g,f in self.jobs if f is not future]
+            if not self.alive or future.cancelled():return False
+            if widget:widget.set_sensitive(True)
+            try:
+                value=future.result()
+                if done and (not page_bound or generation==self.generation):done(value)
+            except Exception as error:
+                if not page_bound or generation==self.generation:self.error(error)
+                if widget and isinstance(widget,Gtk.Switch) and hasattr(widget,'original'):widget.set_active(widget.original)
+            return False
+        future.add_done_callback(lambda *_:GLib.idle_add(finish))
+        return future
+
+    def section(self,title=None):
+        if title:self.content.pack_start(label(title,'section-title'),False,False,0)
+        group=box();group.get_style_context().add_class('group');self.content.pack_start(group,False,False,0);return group
+
+    def row(self,group,title,detail=None,control=None):
+        row=box(False,14);row.get_style_context().add_class('setting-row')
+        text=box(True,3);name=label(title,wrap=True);text.pack_start(name,False,False,0)
+        if detail:text.pack_start(label(detail,'muted',True),False,False,0)
+        row.pack_start(text,True,True,0)
+        if control:row.pack_end(control,False,False,0)
+        group.pack_start(row,False,False,0);return row
+
+    def info(self,group,title,value):
+        value_label=label(value,'muted');value_label.set_line_wrap(True);value_label.set_max_width_chars(28);value_label.set_xalign(1)
+        self.row(group,title,control=value_label)
+
+    def action(self,group,title,callback,detail=None,button='Open…',available=True):
+        control=Gtk.Button(label=button);control.set_sensitive(available)
+        control.connect('clicked',lambda *_:callback(control));self.row(group,title,detail,control);return control
+
+    def external(self,group,title,args,detail=None,terminal=False):
+        exists=bool(shutil.which(args[0]) or Path(args[0]).is_file())
+        missing=args[0]
+        if args[:2]==['flatpak','run'] and len(args)>2:
+            try:exists=Gio.DesktopAppInfo.new(args[2]+'.desktop') is not None
+            except TypeError:exists=False
+            missing=args[2]
+        self.action(group,title,lambda b:self.work(lambda:M['open_terminal'](args,title) if terminal else M['launch'](args),widget=b),detail if exists else f'{missing} is not installed.',available=exists)
+
+    def toggle(self,group,title,value,operation,detail=None):
+        switch=Gtk.Switch();switch.set_valign(Gtk.Align.CENTER);switch.set_active(bool(value));switch.original=bool(value)
+        def change(widget,state):
+            if state==widget.original:return False
+            def success(_):widget.original=state;widget.set_active(state)
+            self.work(lambda:operation(state),success,widget)
+            return True
+        switch.connect('state-set',change);self.row(group,title,detail,switch);return switch
+
+    def scale(self,group,title,value,minimum,maximum,operation,step=1,detail=None):
+        control=Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL,minimum,maximum,step);control.set_value(value);control.set_digits(0 if step>=1 else 2);control.set_size_request(185,-1)
+        token=[None]
+        def changed(widget):
+            if token[0]:GLib.source_remove(token[0])
+            def apply():
+                token[0]=None
+                self.work(lambda:operation(widget.get_value()))
+                return False
+            token[0]=GLib.timeout_add(250,apply)
+        control.connect('value-changed',changed);self.row(group,title,detail,control);return control
+
+    def choice(self,group,title,options,current,operation,detail=None):
+        control=Gtk.ComboBoxText()
+        for key,text in options:control.append(str(key),text)
+        control.set_active_id(str(current))
+        control.connect('changed',lambda c:self.work(lambda:operation(c.get_active_id()),widget=c) if c.get_active_id() is not None else None)
+        self.row(group,title,detail,control);return control
+
+    def show(self):self.content.show_all()
+
+    def open_page(self,page,remember=True):
+        if not self.window:return
+        if remember and (self.history_index<0 or self.history[self.history_index]!=page):
+            self.history=self.history[:self.history_index+1]+[page];self.history_index=len(self.history)-1
+        # Opening, refreshing and history navigation all start at the page top.
+        self.scroller.get_vadjustment().set_value(0)
+        self.current_page=page;self.generation+=1;self.notice.hide()
+        for future in self.image_jobs:future.cancel()
+        self.image_jobs=[]
+        for child in self.content.get_children():self.content.remove(child)
+        spec=next(p for p in PAGES if p[0]==page);self.title.set_text(spec[1]);self.nav.select_row(self.nav_rows[page])
+        self.back.set_sensitive(self.history_index>0);self.forward.set_sensitive(self.history_index<len(self.history)-1)
+        title=label(spec[1],'page-title');self.content.pack_start(title,False,False,0)
+        try:getattr(self,'page_'+page)()
+        except Exception as error:self.error(error)
+        self.show()
+        generation=self.generation
+        def top():
+            if generation==self.generation:self.scroller.get_vadjustment().set_value(0)
+            return False
+        GLib.idle_add(top)
+
+    def options(self,names,render):
+        loading=label('Reading current settings…','muted');self.content.pack_start(loading,False,False,0)
+        def read():
+            values={}
+            for name in names:
+                try:values[name]=M['option'](M['OPTIONS'][name][0])
+                except Exception:values[name]=None
+            return values
+        def done(values):self.content.remove(loading);render(values);self.show()
+        self.work(read,done)
+
+    def hypr_switch(self,group,title,key,values,detail=None,invert=False):
+        if values.get(key) is None:self.info(group,title,'Unavailable');return
+        self.toggle(group,title,not values[key] if invert else values[key],lambda v:M['set_option'](key,not v if invert else v),detail)
+
+    def page_general(self):
+        self.content.pack_start(label('Manage this computer, software, storage and everyday system preferences.','muted',True),False,False,0)
+        group=self.section()
+        for title,detail,method in [('About','Hardware and software information',self.about),('Software Update','Arch packages and Flatpak applications',self.updates),('Storage','Available space and home folder',self.storage),('Date & Time','Time zone and network time',self.datetime_page),('Language & Region','System locale and keyboard layout',self.language),('Login Items & Extensions','Apps and services that start at login',self.login_items),('Sharing','Network services and computer name',self.sharing),('Time Machine','Backups and restore on Linux',self.backups)]:
+            self.action(group,title,lambda b,m=method:self.subpage(m),detail,button='›')
+
+    def subpage(self,method):
+        for child in self.content.get_children():self.content.remove(child)
+        control=Gtk.Button(label='Back to General');control.set_halign(Gtk.Align.START);control.connect('clicked',lambda *_:self.open_page('general',False));self.content.pack_start(control,False,False,0)
+        method();self.show()
+
+    def about(self):
+        self.content.pack_start(icon('computer',72),False,False,8);self.content.pack_start(label('About This Computer','page-title'),False,False,0)
+        def render(info):
+            group=self.section();self.info(group,'Computer Name',info['hostname']);self.info(group,'Operating System',info['system']);self.info(group,'Kernel',info['kernel']);self.info(group,'Processor',info['cpu']);self.info(group,'Memory',str(info['memory'])+' GB');self.show()
+        self.work(M['system_info'],render)
+
+    def updates(self):
+        self.content.pack_start(label('Software Update','page-title'),False,False,0)
+        group=self.section();self.external(group,'Check for Updates',[str(BIN/'mac-os-updates')],terminal=True)
+        self.external(group,'Update Arch Linux',['sudo','pacman','-Syu'],detail='Review package changes and authenticate in Terminal.',terminal=True)
+        self.external(group,'Update Flatpak Apps',['flatpak','update','--user'],terminal=True)
+
+    def storage(self):
+        self.content.pack_start(label('Storage','page-title'),False,False,0)
+        def render(info):
+            disk=info['disk'];group=self.section();self.info(group,'Capacity',f'{disk.total/2**30:.1f} GB');self.info(group,'Available',f'{disk.free/2**30:.1f} GB')
+            progress=Gtk.ProgressBar();progress.set_fraction(disk.used/disk.total);progress.set_text(f'{disk.used/2**30:.1f} GB used');progress.set_show_text(True);self.content.pack_start(progress,False,False,0)
+            self.external(group,'Manage Files',['dolphin',str(HOME)]);self.external(group,'Trash',['dolphin','trash:/']);self.show()
+        self.work(M['system_info'],render)
+
+    def datetime_page(self):
+        self.content.pack_start(label('Date & Time','page-title'),False,False,0)
+        group=self.section();self.info(group,'Current Time',datetime.datetime.now().strftime('%A, %d %B %Y · %H:%M'))
+        def render(data):
+            raw,zones=data
+            props=dict(line.split('=',1) for line in raw.splitlines() if '=' in line)
+            self.choice(group,'Time Zone',[(zone,zone) for zone in zones.splitlines()],props.get('Timezone',''),lambda zone:M['command']('timedatectl','set-timezone',zone))
+            self.toggle(group,'Set time and date automatically',props.get('NTP')=='yes',lambda v:M['command']('timedatectl','set-ntp','true' if v else 'false'))
+            self.show()
+        self.work(lambda:(M['command']('timedatectl','show','-p','Timezone','-p','NTP'),M['command']('timedatectl','list-timezones')),render)
+        self.external(group,'System Time Status',['timedatectl','status'],terminal=True)
+
+    def language(self):
+        group=self.section('Language & Region');self.info(group,'Preferred Language',os.environ.get('LANG','Not set'));self.info(group,'Region',os.environ.get('LC_TIME',os.environ.get('LANG','Not set')))
+        self.external(group,'System Locale',['localectl','status'],terminal=True);self.action(group,'Keyboard Layout',lambda b:self.open_page('keyboard'))
+
+    def login_items(self):
+        group=self.section('Login Items & Extensions');self.external(group,'Login Applications',['dolphin',str(HOME/'.config/autostart')],detail='Desktop entries in this folder run when you sign in.')
+        self.external(group,'User Services',['systemctl','--user','list-unit-files'],terminal=True)
+        self.external(group,'Background Timers',['systemctl','--user','list-timers'],terminal=True)
+
+    def sharing(self):
+        group=self.section('Sharing');entry=Gtk.Entry(text=os.uname().nodename);entry.set_max_length(63)
+        self.row(group,'Computer Name',control=entry)
+        def rename(button):
+            name=entry.get_text().strip()
+            if not re.fullmatch(r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?',name):self.error('Use letters, numbers and hyphens for the computer name.');return
+            self.work(lambda:M['command']('hostnamectl','set-hostname',name),widget=button)
+        self.action(group,'Apply Computer Name',rename,detail='Administrator authentication may be requested.',button='Apply')
+        self.external(group,'Remote Login Status',['systemctl','status','sshd'],terminal=True)
+        self.external(group,'Network Connections',[str(BIN/'arch-network')])
+
+    def backups(self):
+        group=self.section('Backups');self.row(group,'Time Machine','Apple Time Machine is not available on Linux. Use the desktop restore helper for configuration backups.')
+        self.external(group,'Configuration Backups',['dolphin',str(HOME/'.local/state/arch-hyprland-dotfiles/backups')])
+        self.external(group,'Backup Application',['pika-backup'],detail='Encrypted backups using Borg, when installed.')
+
+    def page_appearance(self):
+        pref=M['helper']('macos-appearance')['preference']()['mode'];group=box(False,12);self.content.pack_start(group,False,False,0)
+        for mode,name in [('light','Light'),('dark','Dark'),('auto','Auto')]:
+            button=Gtk.Button();button.get_style_context().add_class('appearance')
+            if mode==pref:button.get_style_context().add_class('selected')
+            body=box(True,6);canvas=Gtk.DrawingArea();canvas.set_size_request(142,88)
+            def draw(_,cr,variant=mode):
+                cr.set_source_rgb(.18,.46,.76);cr.paint()
+                cr.set_source_rgb(*((.16,.16,.18) if variant=='dark' else (.94,.94,.96)));cr.rectangle(20,16,105,60);cr.fill()
+                cr.set_source_rgba(.4,.4,.5,.22);cr.rectangle(20,16,29,60);cr.fill()
+                if variant=='auto':cr.set_source_rgb(.16,.16,.18);cr.rectangle(73,16,52,60);cr.fill()
+                return False
+            canvas.connect('draw',draw);body.pack_start(canvas,False,False,0);name_label=label(name);name_label.set_xalign(.5);body.pack_start(name_label,False,False,0);button.add(body)
+            button.connect('clicked',lambda b,m=mode:self.work(lambda:M['command'](BIN/'macos-appearance',m),lambda _:self.open_page('appearance',False),b))
+            group.pack_start(button,True,True,0)
+        self.content.pack_start(label('Auto uses Light from 7 AM to 7 PM and Dark overnight.','muted',True),False,False,0)
+        controls=self.section('Window Appearance')
+        self.toggle(controls,'Liquid Glass',M['helper']('macos-glass')['enabled'](),lambda v:M['command'](BIN/'macos-glass','on' if v else 'off'),'Frosted desktop panels; application content stays opaque.')
+        def render(values):
+            self.hypr_switch(controls,'Window Blur','blur',values)
+            if values['rounding'] is not None:self.scale(controls,'Corner Radius',values['rounding'],0,30,lambda v:M['set_option']('rounding',int(v)))
+        self.options(['blur','rounding'],render)
+
+    def page_wallpaper(self):
+        current=W['current']();preview=Gtk.Image();preview.set_halign(Gtk.Align.START);self.content.pack_start(preview,False,False,0)
+        if Path(current).is_file():self.thumbnail(preview,current,420,210)
+        group=self.section();self.info(group,'Current Wallpaper',Path(current).stem or 'Not set')
+        self.action(group,'Add Photo…',lambda *_:self.choose_photo(),button='Choose…')
+        self.action(group,'Download All macOS Wallpapers',lambda b:self.work(lambda:M['command'](BIN/'macos-wallpapers','--install',timeout=600),lambda _:self.open_page('wallpaper',False),b),detail='22 original Apple wallpapers. Downloads stay on this computer.',button='Download')
+        entries=W['catalog']()
+        for collection in dict.fromkeys(e['collection'] for e in entries):
+            self.content.pack_start(label(collection,'section-title'),False,False,0)
+            flow=Gtk.FlowBox();flow.set_selection_mode(Gtk.SelectionMode.NONE);flow.set_min_children_per_line(2);flow.set_max_children_per_line(3);flow.set_column_spacing(8);flow.set_row_spacing(8);self.content.pack_start(flow,False,False,0)
+            for entry in (e for e in entries if e['collection']==collection):
+                button=Gtk.Button();button.get_style_context().add_class('wallpaper');button.set_tooltip_text(entry['name'])
+                if entry['path']==current:button.get_style_context().add_class('selected')
+                body=box(True,5);image=Gtk.Image();image.set_size_request(150,88)
+                if entry['installed']:self.thumbnail(image,entry['path'],150,88)
+                else:image.set_from_icon_name('folder-download-symbolic',Gtk.IconSize.DIALOG)
+                body.pack_start(image,False,False,0);text=label(entry['name']+('' if entry['installed'] else ' · Download'));text.set_xalign(.5);body.pack_start(text,False,False,0);button.add(body)
+                def choose(b,e=entry):
+                    def apply():
+                        path=W['download'](e);return W['apply'](path)
+                    self.work(apply,lambda _:self.open_page('wallpaper',False),b)
+                button.connect('clicked',choose);flow.add(button)
+        locals_group=self.section('Your Pictures')
+        self.external(locals_group,'Open Wallpaper Folder',['dolphin',str(HOME/'.local/share/wallpapers')])
+
+    def thumbnail(self,image,path,width,height):
+        image.set_size_request(width,height)
+        def load():
+            from PIL import Image,ImageOps
+            source=Path(path)
+            stamp=f'{source}:{source.stat().st_mtime_ns}:{width}:{height}'
+            cache=HOME/'.cache/macos-desktop/settings-thumbnails'/(hashlib.sha256(stamp.encode()).hexdigest()+'.jpg')
+            if not cache.exists():
+                cache.parent.mkdir(parents=True,exist_ok=True)
+                with Image.open(source) as original:
+                    thumb=ImageOps.fit(ImageOps.exif_transpose(original).convert('RGB'),(width,height),method=Image.Resampling.LANCZOS)
+                    temporary=cache.with_suffix('.tmp')
+                    thumb.save(temporary,format='JPEG',quality=90);temporary.replace(cache)
+            return GdkPixbuf.Pixbuf.new_from_file(str(cache))
+        self.work(load,lambda pix:image.set_from_pixbuf(pix),image_job=True)
+
+    def choose_photo(self):
+        chooser=Gtk.FileChooserDialog(title='Choose Wallpaper',parent=self.window,action=Gtk.FileChooserAction.OPEN)
+        chooser.add_buttons('Cancel',Gtk.ResponseType.CANCEL,'Set Wallpaper',Gtk.ResponseType.OK)
+        filt=Gtk.FileFilter();filt.set_name('Images');[filt.add_mime_type(m) for m in ('image/jpeg','image/png','image/webp')];chooser.add_filter(filt)
+        response=chooser.run();path=chooser.get_filename();chooser.destroy()
+        if response==Gtk.ResponseType.OK:self.work(lambda:W['apply'](path),lambda _:self.open_page('wallpaper',False))
+
+    def page_wifi(self):
+        group=self.section();self.row(group,'Wi-Fi','Reading wireless adapter…')
+        def render(data):
+            for child in group.get_children():group.remove(child)
+            self.toggle(group,'Wi-Fi',data['enabled'],lambda v:M['wifi_power'](v),'Manage wireless connections on this computer.')
+            self.external(group,'Advanced Wi-Fi Settings',[str(BIN/'arch-wifi')])
+            connected=next((n for n in data['networks'] if n['connected']),None)
+            if connected:self.info(group,'Connected Network',connected['name'])
+            nearby=self.section('Nearby Networks')
+            if not data['networks']:self.row(nearby,'No networks found','Turn on Wi-Fi and refresh to scan again.')
+            for network in data['networks']:
+                if network['connected']:self.info(nearby,network['name'],'Connected');continue
+                if data['backend']=='iwd':args=['iwctl','station',network['device'],'connect',network['name']]
+                else:args=['nmcli','--ask','device','wifi','connect',network['name']]
+                self.action(nearby,network['name'],lambda b,a=args:self.work(lambda:M['open_terminal'](a,'Connect to Wi-Fi'),widget=b),detail=('Secured' if network['secure'] else 'Open network')+f" · Signal {round(network['signal'])}%",button='Connect…')
+            self.show()
+        self.work(M['wifi_state'],render)
+
+    def page_bluetooth(self):
+        group=self.section();self.row(group,'Bluetooth','Reading Bluetooth adapter…')
+        def render(data):
+            for child in group.get_children():group.remove(child)
+            self.toggle(group,'Bluetooth',data['enabled'],lambda v:M['command']('bluetoothctl','power','on' if v else 'off'))
+            devices=self.section('My Devices')
+            if not data['devices']:self.row(devices,'No saved devices','Open device discovery to pair a keyboard, mouse or headphones.')
+            for device in data['devices']:
+                action='disconnect' if device['connected'] else 'connect'
+                self.action(devices,device['name'],lambda b,d=device,a=action:self.work(lambda:M['command']('bluetoothctl',a,d['address']),lambda _:self.open_page('bluetooth',False),b),detail='Connected' if device['connected'] else 'Not connected',button=action.capitalize())
+            self.external(devices,'Discover & Pair Devices',['blueman-manager']);self.show()
+        self.work(M['bluetooth_state'],render)
+
+    def page_network(self):
+        group=self.section();self.external(group,'Wi-Fi',[str(BIN/'macos-settings'),'wifi']);self.external(group,'Network Setup',[str(BIN/'arch-network')])
+        def render(raw):
+            for dev in json.loads(raw):
+                if dev['ifname']=='lo':continue
+                addresses=', '.join(a['local'] for a in dev.get('addr_info',[]) if a['family']=='inet')
+                self.info(group,dev['ifname'],addresses or dev.get('operstate','Unknown'))
+            self.show()
+        self.work(lambda:M['command']('ip','-j','address'),render)
+        self.external(group,'VPN & Connection Profiles',['nm-connection-editor'],detail='Requires an active NetworkManager service.')
+
+    def page_battery(self):
+        data=M['helper']('macos-status')['battery_state']();group=self.section()
+        self.info(group,'Battery Level',str(data['capacity'])+'%' if data['capacity'] is not None else 'Not available');self.info(group,'Power Source',data['label'])
+        if data['capacity'] is not None:
+            progress=Gtk.ProgressBar();progress.set_fraction(data['capacity']/100);self.content.pack_start(progress,False,False,0)
+        if shutil.which('powerprofilesctl'):
+            def render(profile):
+                self.choice(group,'Energy Mode',[('power-saver','Low Power'),('balanced','Automatic'),('performance','High Performance')],profile,lambda v:M['command']('powerprofilesctl','set',v));self.show()
+            self.work(lambda:M['command']('powerprofilesctl','get'),render)
+        else:self.row(group,'Energy Modes','Power Profiles Daemon is not installed. Battery status is read directly from this computer.')
+        self.action(group,'Lock Screen Settings',lambda *_:self.open_page('lock'))
+
+    def page_sound(self):
+        group=self.section('Output')
+        def render(data):
+            self.scale(group,'Output Volume',data['volume']*100,0,100,lambda v:M['set_volume'](v/100))
+            self.toggle(group,'Mute',data['muted'],lambda v:M['command']('wpctl','set-mute','@DEFAULT_AUDIO_SINK@','1' if v else '0'))
+            self.show()
+        self.work(M['sound_state'],render)
+        def output_devices(devices):
+            default=M['command']('pactl','get-default-sink')
+            return devices,default
+        def devices_render(data):
+            devices,default=data
+            if devices:self.choice(group,'Output Device',[(d['name'],d.get('description',d['name'])) for d in devices],default,lambda v:M['command']('pactl','set-default-sink',v))
+            self.show()
+        self.work(lambda:output_devices(M['audio_devices']('output')),devices_render)
+        inputs=self.section('Input');self.external(inputs,'Microphone & App Volume',['pavucontrol','--tab=4'])
+        effects=self.section('Sound Effects');sound=M['helper']('macos-sound')['settings']()
+        self.toggle(effects,'Play Sound Effects',sound.get('enabled',True),lambda v:M['command'](BIN/'macos-sound','on' if v else 'off'))
+        self.external(effects,'Preview Notification Sound',[str(BIN/'macos-sound'),'notification'])
+
+    def page_keyboard(self):
+        group=self.section()
+        def render(values):
+            if values['repeat_rate'] is not None:self.scale(group,'Key Repeat Rate',values['repeat_rate'],1,100,lambda v:M['set_option']('repeat_rate',int(v)))
+            if values['repeat_delay'] is not None:self.scale(group,'Delay Until Repeat',values['repeat_delay'],100,1500,lambda v:M['set_option']('repeat_delay',int(v)),step=50,detail='Milliseconds before a held key repeats.')
+            layouts=[('us','English (US)'),('gb','English (UK)'),('in','Indian'),('de','German'),('fr','French'),('es','Spanish'),('jp','Japanese')]
+            if values['kb_layout'] and values['kb_layout'] not in {x[0] for x in layouts}:layouts.append((values['kb_layout'],values['kb_layout']))
+            self.choice(group,'Input Source',layouts,values['kb_layout'],lambda v:M['set_option']('kb_layout',v))
+        self.options(['repeat_rate','repeat_delay','kb_layout'],render)
+        self.external(group,'Keyboard Shortcuts',[str(BIN/'macos-menu'),'shortcuts'])
+
+    def page_mouse(self):
+        group=self.section()
+        def render(values):
+            if values['sensitivity'] is not None:self.scale(group,'Tracking Speed',values['sensitivity'],-1,1,lambda v:M['set_option']('sensitivity',v),step=.05)
+            self.hypr_switch(group,'Natural Scrolling','natural_scroll',values)
+            if values['scroll_factor'] is not None:self.scale(group,'Scrolling Speed',values['scroll_factor'],.2,3,lambda v:M['set_option']('scroll_factor',v),step=.1)
+        self.options(['sensitivity','natural_scroll','scroll_factor'],render)
+
+    def page_trackpad(self):
+        group=self.section()
+        def render(values):
+            for title,key in [('Tap to Click','tap_to_click'),('Natural Scrolling','touchpad_natural_scroll'),('Disable While Typing','disable_while_typing')]:self.hypr_switch(group,title,key,values)
+        self.options(['tap_to_click','touchpad_natural_scroll','disable_while_typing'],render)
+        group=self.section('More Gestures');self.row(group,'Switch Between Desktops','Swipe horizontally with three fingers.');self.row(group,'Move and Resize Windows','Hold Super and drag with the left or right mouse button.')
+
+    def page_accessibility(self):
+        group=self.section('Display')
+        def render(values):self.hypr_switch(group,'Reduce Motion','animations',values,'Disable desktop window and workspace animations.',invert=True)
+        self.options(['animations'],render)
+        def text_scale():
+            group=self.section('Text')
+            try:current=float(M['command']('gsettings','get','org.gnome.desktop.interface','text-scaling-factor'))
+            except Exception:current=1
+            self.scale(group,'Text Size',current,.8,1.6,lambda v:M['command']('gsettings','set','org.gnome.desktop.interface','text-scaling-factor',str(round(v,2))),step=.05,detail='Applies to applications that support desktop text scaling.')
+        text_scale()
+        self.action(group,'Display Brightness & Scaling',lambda *_:self.open_page('displays'))
+
+    def page_desktop(self):
+        group=self.section('Desktop')
+        self.action(group,'Wallpaper',lambda *_:self.open_page('wallpaper'))
+        self.row(group,'Desktop Items','Right-click an item to rename it or remove it through Trash. Removing an app shortcut keeps the application installed.')
+        self.external(group,'Open Desktop Folder',['dolphin',str(HOME/'Desktop')])
+        self.options(['follow_mouse'],lambda v:self.hypr_switch(group,'Focus Follows Pointer','follow_mouse',v,'Off keeps click-to-focus behavior.'))
+        dock=self.section('Dock');prefs=M['dock_preferences']()
+        self.toggle(dock,'Automatically Hide and Show the Dock',prefs['auto_hide'],lambda v:M['set_dock']('auto_hide',v))
+        self.toggle(dock,'Magnification',prefs['magnification'],lambda v:M['set_dock']('magnification',v))
+        self.scale(dock,'Size',prefs['size'],32,64,lambda v:M['set_dock']('size',int(v)),detail='Dock preferences apply within two seconds.')
+        self.action(dock,'Show or Hide Dock',lambda b:self.work(lambda:M['command']('pkill','-USR1','-f','^/usr/bin/python.*/macos-dock$'),widget=b),button='Toggle')
+        self.external(dock,'Open Launchpad',[str(BIN/'macos-launchpad')])
+
+    def page_displays(self):
+        group=self.section()
+        self.work(M['brightness'],lambda value:(self.scale(group,'Brightness',value,1,100,lambda v:M['command']('brightnessctl','set',str(round(v))+'%')),self.show()))
+        def render(raw):
+            for monitor in json.loads(raw):
+                panel=self.section(monitor.get('description',monitor['name']))
+                self.info(panel,'Resolution',f"{monitor['width']} × {monitor['height']}");self.info(panel,'Refresh Rate',f"{monitor['refreshRate']:.1f} Hz")
+                self.info(panel,'Display Scaling',f"{monitor['scale']:g}×")
+                modes=[m.removesuffix('Hz') for m in monitor.get('availableModes',[])]
+                active=f"{monitor['width']}x{monitor['height']}@{monitor['refreshRate']:.2f}"
+                if modes:
+                    if active not in modes:active=modes[0]
+                    self.choice(panel,'Resolution',[(m,m.replace('x',' × ').replace('@',' · ')+' Hz') for m in modes],active,lambda v,m=monitor:self.change_scale(dict(m,requested_mode=v),m['scale']))
+                self.choice(panel,'Scale',[(str(v),str(v)+'×') for v in (1,1.25,1.5,1.75,2)],str(monitor['scale']).removesuffix('.0'),lambda v,m=monitor:self.change_scale(m,float(v)),detail='A 15-second confirmation protects against unreadable settings.')
+            self.show()
+        self.work(lambda:M['command']('hyprctl','monitors','-j'),render)
+
+    def change_scale(self,monitor,value):
+        # Monitor changes run on the GTK thread, so the confirmation remains usable.
+        GLib.idle_add(self.confirm_scale,monitor,value)
+
+    def confirm_scale(self,monitor,value):
+        name=monitor['name'];old=monitor['scale']
+        old_mode=f"{monitor['width']}x{monitor['height']}@{monitor['refreshRate']:.2f}"
+        new_mode=monitor.get('requested_mode',old_mode)
+        # Build Lua explicitly; JSON object syntax is not Lua syntax.
+        def lua_apply(scale,mode):
+            result=M['command']('hyprctl','eval',f'hl.monitor({{output={json.dumps(name)},mode={json.dumps(mode)},position="auto",scale={scale}}})')
+            if 'error' in result.lower():raise RuntimeError(result)
+        try:lua_apply(value,new_mode)
+        except Exception as error:self.error(error);return False
+        dialog=Gtk.MessageDialog(transient_for=self.window,modal=True,message_type=Gtk.MessageType.QUESTION,buttons=Gtk.ButtonsType.NONE,text='Keep these display settings?')
+        dialog.add_buttons('Revert',Gtk.ResponseType.CANCEL,'Keep Changes',Gtk.ResponseType.OK)
+        dialog.format_secondary_text('The previous scale will be restored in 15 seconds.')
+        token=GLib.timeout_add_seconds(15,lambda:(dialog.response(Gtk.ResponseType.CANCEL),False)[1])
+        response=dialog.run();dialog.destroy();GLib.source_remove(token)
+        try:
+            if response!=Gtk.ResponseType.OK:lua_apply(old,old_mode)
+            else:
+                config=HOME/'.config/hypr/display-settings.lua';config.parent.mkdir(parents=True,exist_ok=True)
+                settings=M['read_json'](HOME/'.config/macos-desktop/displays.json');settings[name]={'scale':value,'mode':new_mode}
+                M['atomic_json'](HOME/'.config/macos-desktop/displays.json',settings)
+                config.write_text(''.join(f'hl.monitor({{output={json.dumps(n)},mode={json.dumps(s["mode"])},position="auto",scale={s["scale"]}}})\n' for n,s in settings.items()))
+        except Exception as error:self.error(error)
+        self.open_page('displays',False);return False
+
+    def page_lock(self):
+        group=self.section();timeout=M['lock_timeout']()
+        if timeout is not None:self.choice(group,'Start Screen Lock When Inactive',[(str(v),str(v//60)+' minutes') for v in (60,120,300,600,900,1800,3600)],str(timeout),lambda v:M['set_lock_timeout'](int(v)))
+        else:self.row(group,'Automatic Lock','No loginctl lock listener found in hypridle.conf.')
+        self.external(group,'Lock Now',['hyprlock']);self.row(group,'Require Password','Your account password is required immediately after locking.');self.action(group,'Change Login Password',lambda *_:self.open_page('password'))
+
+    def page_screensaver(self):
+        self.content.pack_start(label('This desktop uses a secure idle lock with your wallpaper. macOS aerial video screen savers are not installed.','muted',True),False,False,0)
+        self.page_lock();self.action(self.section(),'Choose Wallpaper',lambda *_:self.open_page('wallpaper'))
+
+    def page_notifications(self):
+        group=self.section()
+        def render(raw):
+            self.toggle(group,'Allow Notifications',raw!='true',lambda v:M['command']('dunstctl','set-paused','false' if v else 'true'))
+            self.show()
+        self.work(lambda:M['command']('dunstctl','is-paused'),render)
+        self.external(group,'Show Notification History',['dunstctl','history-pop']);self.external(group,'Clear Visible Notifications',['dunstctl','close-all'])
+        self.action(group,'Notification Sound',lambda *_:self.open_page('sound'))
+
+    def page_focus(self):
+        group=self.section('Do Not Disturb')
+        def render(raw):self.toggle(group,'Do Not Disturb',raw=='true',lambda v:M['command']('dunstctl','set-paused','true' if v else 'false'),'Pause notification banners until you turn this off.');self.show()
+        self.work(lambda:M['command']('dunstctl','is-paused'),render)
+        self.row(group,'Calls and Messages','Do Not Disturb controls desktop notifications. Individual apps manage their own calls and alerts.')
+
+    def page_screentime(self):
+        group=self.section();uptime=float(Path('/proc/uptime').read_text().split()[0]);self.info(group,'Time Since Startup',str(datetime.timedelta(seconds=int(uptime))))
+        self.row(group,'App Usage & Limits','Per-app usage history and Apple Screen Time are not available on this Linux desktop. No activity tracking is enabled.')
+        self.external(group,'Running Applications',['kitty','top'])
+
+    def page_privacy(self):
+        group=self.section('Application Permissions');self.row(group,'Camera, Microphone & Screen Recording','Sandboxed applications request access through desktop portals. Review Flatpak overrides with the permission editor when installed.')
+        self.external(group,'Flatpak Permission Editor',['flatpak','run','com.github.tchx84.Flatseal'])
+        self.external(group,'Inspect Portal Permissions',['flatpak','permissions'],terminal=True)
+        self.external(group,'Inspect Flatpak Applications',['flatpak','list','--app'],terminal=True)
+        security=self.section('Security');self.external(security,'Lock Screen',['hyprlock']);self.action(security,'Login Password',lambda *_:self.open_page('password'))
+
+    def page_password(self):
+        group=self.section();self.external(group,'Change Login Password',['passwd'],detail='Your current password is requested securely in Terminal.',terminal=True)
+        if shutil.which('fprintd-enroll'):self.external(group,'Enroll Fingerprint',['fprintd-enroll'],terminal=True)
+        else:self.row(group,'Touch ID','Apple Touch ID is not available. Linux fingerprint enrollment requires supported hardware and fprintd.')
+        self.external(group,'Lock Screen',['hyprlock'])
+
+    def page_users(self):
+        group=self.section();self.info(group,'Current User',getpass.getuser());self.info(group,'Account Type','Administrator' if 'wheel' in M['command']('id','-nG').split() else 'Standard')
+        self.external(group,'Account & Group Details',['id'],terminal=True);self.action(group,'Change Password',lambda *_:self.open_page('password'))
+        self.external(group,'User Accounts',['user-manager'])
+
+    def page_accounts(self):
+        group=self.section();self.row(group,'Internet Accounts','Mail and calendar accounts are managed by their applications on this desktop.')
+        self.external(group,'Mail & Calendar',['evolution']);self.external(group,'iCloud on the Web',['xdg-open','https://www.icloud.com/'])
+
+    def page_printers(self):
+        group=self.section();self.external(group,'Printers & Queues',['system-config-printer']);self.external(group,'CUPS Administration',['xdg-open','http://localhost:631'],detail='Requires the CUPS service.');self.external(group,'Document Scanner',['simple-scan'])
+        if shutil.which('lpstat'):self.work(lambda:M['command']('lpstat','-p',check=False),lambda raw:(self.row(group,'Configured Printers',raw or 'No printers configured.'),self.show()))
+
+    def page_spotlight(self):
+        group=self.section();self.external(group,'Open Spotlight',[str(BIN/'macos-spotlight')]);self.row(group,'Search','Press Super + Space to search installed applications. Settings search is available here with Ctrl + F.');self.external(group,'Application Shortcuts',['dolphin',str(HOME/'.local/share/applications')])
+
+    def page_menubar(self):
+        group=self.section();self.row(group,'Control Center','Sound, Wi-Fi, Bluetooth, brightness and appearance are available from the menu bar.');self.external(group,'Open Control Center',[str(BIN/'macos-menu'),'control']);self.action(group,'Sound Settings',lambda *_:self.open_page('sound'));self.action(group,'Wi-Fi Settings',lambda *_:self.open_page('wifi'));self.action(group,'Battery Settings',lambda *_:self.open_page('battery'))
+
+    def unavailable(self,title,detail,actions=()):
+        group=self.section();self.row(group,title,detail)
+        for name,args in actions:self.external(group,name,args)
+
+    def page_apple(self):self.unavailable('Apple Account','Native Apple Account, Family Sharing and iCloud integration require macOS. Your Linux account remains separate.',[('Open iCloud Web',['xdg-open','https://www.icloud.com/']),('Manage Apple Account',['xdg-open','https://account.apple.com/'])])
+    def page_intelligence(self):self.unavailable('Apple Intelligence & Siri','Apple Intelligence and Siri require supported Apple hardware and macOS. They cannot be enabled on this Linux desktop.')
+    def page_game(self):self.unavailable('Game Center','Apple Game Center is not available on Linux. Installed Linux game clients can be opened below.',[('Steam',['steam'])])
+    def page_wallet(self):self.unavailable('Wallet & Apple Pay','Apple Pay requires supported Apple hardware and services. This application does not collect payment cards.')
+
+
+if __name__=='__main__':
+    app=Settings();raise SystemExit(app.run(sys.argv))

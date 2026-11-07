@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Desktop entry operations; never modify an installed application or link target."""
+import configparser
+import io
+import os
+from pathlib import Path
+
+
+def rename_item(desktop, name, label):
+    desktop = Path(desktop)
+    label = label.strip()
+    if not label or label in ('.', '..') or any(ord(c) < 32 or c in '/\\' for c in label):
+        raise ValueError('Enter a name without slashes or control characters.')
+    source = desktop / name
+    if source.parent != desktop or not os.path.lexists(source):
+        raise ValueError('This desktop item no longer exists.')
+    shortcut = source.suffix == '.desktop' and not source.is_symlink()
+    filename = label if not shortcut or label.endswith('.desktop') else label + '.desktop'
+    target = desktop / filename
+    if source != target and os.path.lexists(target):
+        raise ValueError('An item with that name already exists on the desktop.')
+    if shortcut:
+        data = configparser.ConfigParser(interpolation=None, strict=False)
+        data.optionxform = str
+        data.read(source)
+        data['Desktop Entry']['Name'] = label.removesuffix('.desktop')
+        # A localized Name would otherwise take precedence over the new name.
+        for key in list(data['Desktop Entry']):
+            if key.startswith('Name['):
+                del data['Desktop Entry'][key]
+        output = io.StringIO()
+        data.write(output, space_around_delimiters=False)
+        original = source.read_bytes()
+        source.write_text(output.getvalue())
+        try:
+            source.rename(target)
+        except OSError:
+            source.write_bytes(original)
+            raise
+    else:
+        source.rename(target)
+    return target.name
+
+
+def remove_item(desktop, name):
+    from gi.repository import Gio
+    path = Path(desktop) / name
+    if path.parent != Path(desktop) or not os.path.lexists(path):
+        raise ValueError('This desktop item no longer exists.')
+    # GIO moves the entry itself, including symlinks, into the user's Trash.
+    Gio.File.new_for_path(str(path)).trash(None)

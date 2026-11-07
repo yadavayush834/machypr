@@ -18,6 +18,13 @@ gi.require_version('PangoCairo','1.0')
 from gi.repository import Gtk,Gdk,Gio,GLib,GtkLayerShell,Pango,PangoCairo
 
 HOME=Path.home()
+def preferences():
+    try:data=json.loads((HOME/'.config/macos-desktop/dock.json').read_text())
+    except (OSError,ValueError):data={}
+    try:size=max(32,min(64,int(data.get('size',52))))
+    except (ValueError,TypeError):size=52
+    return {'auto_hide':data.get('auto_hide',True) is not False,'magnification':data.get('magnification',True) is not False,'size':size}
+PREFS=preferences()
 APPEARANCE=runpy.run_path(str(HOME/".local/bin/macos-appearance"))
 DARK=APPEARANCE["current"]()=="dark"
 GLASS=runpy.run_path(str(HOME/".local/bin/macos-glass"))
@@ -45,6 +52,7 @@ def pinned_apps():
   ('Visual Studio Code','code','visual-studio-code',[str(HOME/'.local/bin/code'),'--new-window']),
   ('Brave','brave-browser','brave-browser',[str(HOME/'.local/bin/brave'),'--new-window']),
   ('Terminal','kitty','utilities-terminal',['kitty']),
+  ('System Settings','macos-settings','preferences-system',[str(HOME/'.local/bin/macos-settings')]),
  ]
  for app_id,classname,label,icon in [
   ('com.usebruno.Bruno','bruno','Bruno','bruno'),
@@ -58,8 +66,8 @@ def pinned_apps():
  return pins
 PINNED=pinned_apps()
 APPS=[LAUNCHPAD,*PINNED,DASHBOARD,TRASH]
-BASE=52
-SLOT=60
+BASE=PREFS["size"]
+SLOT=BASE+8
 EDGE=16
 DIVIDER=13
 WIDTH=EDGE*2+SLOT*len(APPS)+DIVIDER
@@ -172,7 +180,7 @@ def draw(widget,cr):
     for i,(_,classname,_,_) in enumerate(APPS):
         distance=abs(center(i)-(state['smooth_pointer'] if state['smooth_pointer'] is not None else -1000))
         influence=max(0,1-distance/105)
-        size=BASE+min(13,BASE*.25)*state['amount']*(.5-.5*math.cos(math.pi*influence))
+        size=BASE+min(13,BASE*.25)*(state['amount'] if PREFS['magnification'] else 0)*(.5-.5*math.cos(math.pi*influence))
         left=center(i)-size/2;top=HEIGHT-19-size
         image=icons[i]
         if image:
@@ -193,10 +201,13 @@ def cancel_hide():
     if state['timer'] is not None:GLib.source_remove(state['timer']);state['timer']=None
 
 def hide():
+    if not PREFS['auto_hide']:return False
     state['timer']=None;state['visible_target']=0.;state['pointer']=None;state['hover']=None;animate();return False
 
 def schedule(*_):
-    cancel_hide();state['pointer']=None;state['hover']=None;animate();state['timer']=GLib.timeout_add(650,hide);return False
+    cancel_hide();state['pointer']=None;state['hover']=None;animate()
+    if PREFS['auto_hide']:state['timer']=GLib.timeout_add(650,hide)
+    return False
 
 def reveal(widget=None,event=None):
     cancel_hide();refresh();window.show_all();state['visible_target']=1.;animate()
@@ -252,7 +263,13 @@ def frame(widget,clock):
     return not settled
 
 def refresh():
-    global DARK,APPS,icons,WIDTH,SLOT,BASE,GLASS_MODE,PINNED
+    global DARK,APPS,icons,WIDTH,SLOT,BASE,GLASS_MODE,PINNED,PREFS
+    new_preferences=preferences();preferences_changed=new_preferences!=PREFS
+    if preferences_changed:
+        old_preferences=PREFS;PREFS=new_preferences
+        if not PREFS['auto_hide']:
+            cancel_hide();window.show_all();state['visible_target']=1.;animate()
+        elif not old_preferences['auto_hide']:schedule()
     DARK=APPEARANCE['current']()=='dark'
     GLASS_MODE=GLASS['enabled']()
     workspace=query('activeworkspace')
@@ -278,12 +295,12 @@ def refresh():
         else:label,icon=classname.rsplit('.',1)[-1],classname
         apps.append((label,classname,icon,[]))
     apps.append(TRASH)
-    if [(a[0],a[1]) for a in apps]!=[(a[0],a[1]) for a in APPS]:
+    if preferences_changed or [(a[0],a[1]) for a in apps]!=[(a[0],a[1]) for a in APPS]:
         APPS=apps;icons=[load_icon(a[2]) for a in APPS]
         monitor=Gdk.Display.get_default().get_monitor(0)
         maximum=monitor.get_geometry().width-40 if monitor else 1200
-        SLOT=min(60,max(20,(maximum-EDGE*2-DIVIDER)/len(APPS)))
-        BASE=min(52,SLOT-8)
+        SLOT=min(PREFS["size"]+8,max(20,(maximum-EDGE*2-DIVIDER)/len(APPS)))
+        BASE=min(PREFS["size"],SLOT-8)
         WIDTH=int(EDGE*2+SLOT*len(APPS)+DIVIDER)
         canvas.set_size_request(WIDTH,HEIGHT);window.resize(WIDTH,HEIGHT)
         state['hover']=None;state['pointer']=None;state['focus']=min(state['focus'],len(APPS)-1)
@@ -343,4 +360,6 @@ def toggle(*_):
 signal.signal(signal.SIGUSR1,lambda *_:GLib.idle_add(toggle))
 css=Gtk.CssProvider();css.load_from_data(b'window#macos-dock,window#dock-sensor {background:transparent;border:none;box-shadow:none;} tooltip {background:rgba(245,245,248,.97);color:#202024;border:1px solid rgba(60,60,65,.25);border-radius:6px;font-family:Inter;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,.16);}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-window.show_all();window.hide();sensor.show_all();window.connect('destroy',Gtk.main_quit);Gtk.main()
+window.show_all();window.hide();sensor.show_all();window.connect('destroy',Gtk.main_quit)
+if not PREFS['auto_hide']:reveal()
+Gtk.main()

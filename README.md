@@ -67,9 +67,12 @@ The bootstrap downloads this repository into a temporary directory and runs its 
 | **Menu bar** | Aligned Apple menu, active-app name, app shortcuts, Wi-Fi, real battery/charging state, Spotlight launcher and clock |
 | **Dock** | Current-desktop apps, sharp WhiteSur icons, hover magnification and auto-hide; Launchpad and Trash remain available |
 | **Window controls** | Red closes, yellow minimizes, green maximizes; centered titles and rounded corners |
+| **System Settings** | Native searchable settings for appearance, wallpaper, Wi-Fi, Bluetooth, sound, displays, input and lock timing |
 | **Appearance** | Light, Dark or scheduled Auto, shared across desktop surfaces and supported app palettes |
 | **Control Center** | Brightness and sound sliders, Wi-Fi, Bluetooth, screen lock, appearance and sound-effect controls |
 | **Launchpad** | Searchable installed applications, kept ready in memory for faster repeat opens |
+| **Original wallpapers** | 22 original macOS wallpapers from Mavericks to Tahoe, downloaded locally; preview and choose in System Settings |
+| **Desktop icons** | Right-click to rename or remove a shortcut through Trash; installed apps stay intact |
 | **Dashboard** | On-demand local notes and system information with `Super + D` |
 | **Screenshots** | `Super + S` selects an area and copies it to the clipboard without saving a file |
 | **Window and tab switching** | Clickable window-name menu; `Alt + Tab` cycles windows on the current desktop |
@@ -234,3 +237,5 @@ The current setup adds Tahoe themes and icons, a local Dashboard, developer app 
 Measured on the development laptop: repeat Launchpad opens took about 70–75 ms, compared with 600–770 ms before. These are launcher visibility timings, not timings for every application. Actual application startup still depends on storage and the application.
 
 The standard installer applies portable user files. System-wide lid handling, faster sleep and guarded login sessions are optional: see [system setup and today's changes](docs/2026-11-07.md). Hardware-specific F11/F12 workarounds are examples and are not enabled for other users.
+
+See [System Settings and desktop actions](docs/SYSTEM-SETTINGS.md) for supported Linux backends, optional tools, wallpaper sources and Apple-only limitations.

@@ -2,6 +2,7 @@
 """Live regression for desktop monitoring, free dragging and saved positions."""
 from pathlib import Path
 import json
+import re
 import runpy
 import subprocess
 import sys
@@ -10,7 +11,7 @@ import gi
 gi.require_version('Gtk','3.0')
 from gi.repository import Gtk,Gdk,GLib
 home=Path.home();helper=home/'.local/bin/macos-desktop-icons'
-subprocess.run(['pkill','-f','^/usr/bin/python '+str(helper)+'$']);time.sleep(.25)
+subprocess.run(['pkill','-f','^(/usr/bin/)?python(3)? '+re.escape(str(helper))+'$']);time.sleep(.25)
 original=Gtk.main;outcome={};fixture=home/'Desktop'/'Desktop live test.txt'
 layout=home/'.local/state/macos-desktop/icon-positions.json';previous=layout.read_bytes() if layout.exists() else None
 assert not fixture.exists()

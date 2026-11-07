@@ -157,7 +157,7 @@ for kind,width in [('battery',26),('network',22),('search',22),('control',22)]:
     else:b.connect('clicked',lambda w,kind=kind:menu(kind,w))
     row.pack_start(b,False,False,0)
 clock=button('','calendar','clock');row.pack_start(clock,False,False,0)
-names={'kitty':'Terminal','brave-browser':'Brave','code':'Visual Studio Code','org.kde.dolphin':'Finder','org.kde.okular':'Preview','org.pulseaudio.pavucontrol':'Sound'}
+names={'macos-settings':'System Settings','kitty':'Terminal','brave-browser':'Brave','code':'Visual Studio Code','org.kde.dolphin':'Finder','org.kde.okular':'Preview','org.pulseaudio.pavucontrol':'Sound'}
 appearance_css=Gtk.CssProvider()
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),appearance_css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
 last_appearance=None
