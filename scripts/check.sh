@@ -8,6 +8,8 @@ while IFS= read -r -d '' file; do
   if command -v shellcheck >/dev/null; then shellcheck -e SC1091 "$file"; fi
  fi
 done < <(find "$root" -path "$root/.git" -prune -o -type f -print0)
+python3 "$root/scripts/check-publication.py"
+python3 "$root/scripts/test-publication.py"
 python3 "$root/scripts/check.py"
 python3 "$root/scripts/test-status.py"
 python3 "$root/scripts/test-appearance.py"

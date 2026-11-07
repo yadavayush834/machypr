@@ -16,17 +16,15 @@ Open **System Settings → Performance**, or use the shortcut in Battery. Three 
 | Background slice CPU weight | 10 | 20 | 5 |
 | Optional file-cache warmup | Deferred | Existing pressure/temperature checks | Deferred |
 
-The CPU/GPU portion currently supports active `intel_pstate` and the legacy Intel i915 GT frequency controls when exposed. Unsupported hardware is reported rather than assigned a pretend profile. The foreground service changes weights on application cgroups and the containing app/session slice; it restores original weights when focus moves or the service stops. Existing higher weights are preserved. CPU and I/O weights affect resource sharing under contention, not uncontended CPU throughput. BFQ must be enabled for useful proportional I/O sharing on the rotational drive. It is already selected on the development laptop.
+The CPU/GPU portion currently supports active `intel_pstate` and the legacy Intel i915 GT frequency controls when exposed. Unsupported hardware is reported rather than assigned a pretend profile. The foreground service changes weights on application cgroups and the containing app/session slice; it restores original weights when focus moves or the service stops. Existing higher weights are preserved. CPU and I/O weights affect resource sharing under contention, not uncontended CPU throughput. Proportional I/O sharing depends on the host disk scheduler.
 
 The controller checks temperature every three seconds. Standard preserves the original full CPU ceiling and relies on normal hardware thermal management. In Performance, at 96°C it lowers the CPU ceiling by five percentage points, normally down to 70%; at 98°C it lowers it by fifteen points, down to 50%. Below 94°C it restores five points per check up to 100%. Battery Saver uses an 80°C target, 40% normal floor and 30% emergency floor, recovering six degrees below its target. Existing minimum CPU limits remain in force. Status is written to `/run` rather than repeatedly writing to the hard drive. Profile selection and the original baseline are stored under `/var/lib/macos-power-profiles`.
 
 Standard preserves the existing adaptive CPU policy for everyday responsiveness. Performance permits higher heat and fan activity; neither mode promises silence or a fixed temperature. Hardware and firmware thermal protections remain active. The controller does not alter RAM timings, voltages, package power limits, fan control, security mitigations, animations, swap configuration or storage integrity settings.
 
-## This machine's limits
+## Hardware limits
 
-The inspected Dell Inspiron 3493 has an i5-1035G1, approximately 16 GB RAM and a rotational ST1000LM035 drive. Before these profiles, turbo was already enabled, maximum CPU performance was already 100%, and Intel GPU ceilings were already 1050 MHz. The additional supported hardware changes are the performance-first CPU policy and HWP dynamic boost. The CPU was measured around 92°C before installation, with package thermal-throttle counters increasing. Disk I/O stalls were present despite existing BFQ and bounded dirty-page writeback settings.
-
-These observations do not support a 10× whole-system software speedup claim. The CPU has no unlocked K/X multiplier, and no supported RAM-overclock interface was found. An SSD and effective cooling address the measured bottlenecks. No hardware upgrade or performance gain is claimed to have happened.
+Profiles operate within the limits exposed by supported drivers. Thermal throttling and slow storage can limit responsiveness; software scheduling cannot replace adequate cooling or faster storage. No fixed performance gain is promised.
 
 ## Inspect and restore
 

@@ -236,9 +236,9 @@ The installer builds a pinned renderer for Hyprland 0.57.1. To install it separa
 
 The current setup adds Tahoe themes and icons, a local Dashboard, developer app pins, smoother Alt+Tab window cycling, simpler title-bar dragging, a lighter lock screen, lid-open display activation and optional faster suspend. Launchpad stays ready in memory, search updates without a debounce delay, and the dock queries Hyprland directly. A low-priority user timer warms up to 128 MiB of common application files only after the system has settled on AC and when pressure/temperature allow; these pages are reclaimable when other programs need RAM.
 
-Measured on the development laptop: repeat Launchpad opens took about 70–75 ms, compared with 600–770 ms before. These are launcher visibility timings, not timings for every application. Actual application startup still depends on storage and the application.
+Launchpad stays ready for repeat opens. Actual application startup depends on storage and the application.
 
-The standard installer applies portable user files. System-wide lid handling, faster sleep and guarded login sessions are optional: see [system setup and today's changes](docs/2026-11-07.md). Hardware-specific F11/F12 workarounds are examples and are not enabled for other users.
+The standard installer applies portable user files. Personal keyboard workarounds, sleep/lid fixes, boot/disk tuning, login overrides and device-specific scale settings are excluded. Guarded login session templates are optional; see [desktop setup notes](docs/2026-11-07.md). See [publication policy](docs/PUBLICATION-POLICY.md) for the repository checks.
 
 See [System Settings and desktop actions](docs/SYSTEM-SETTINGS.md) for supported Linux backends, optional tools, wallpaper sources and Apple-only limitations.
 

@@ -2,6 +2,7 @@
 """Original vector menu-bar icons and truthful Linux power/network status."""
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
 
@@ -62,6 +63,15 @@ def battery_icon(status):
 
 
 def network_state(root=Path('/sys/class/net')):
+    if root == Path('/sys/class/net'):
+        try:
+            routes = json.loads(subprocess.check_output(['ip', '-j', '-4', 'route', 'show', 'default'], timeout=2))
+            usable = [r for r in routes if r.get('dev') and r.get('gateway')]
+            if usable:
+                device = root / min(usable, key=lambda r: r.get('metric', 0))['dev']
+                return ('wifi', 'Wi-Fi preferred') if (device / 'wireless').exists() else ('ethernet', 'Ethernet preferred')
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
     devices = [p for p in sorted(root.glob('*')) if p.name != 'lo']
     for p in devices:
         if read(p/'carrier') == '1' and not (p/'wireless').exists():

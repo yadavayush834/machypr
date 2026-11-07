@@ -3,3 +3,26 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# Private machine overrides and runtime state never belong in the shared templates.
+/local/
+/private/
+/reports/
+.env
+.env.*
+*.key
+*.pem
+*.sqlite
+*.sqlite3
+*.db
+*.backup
+*.backup-*
+/home/.config/hypr/disable-f*.lua
+/home/.config/hypr/settings-overrides.lua
+/home/.config/hypr/display-settings.lua
+/home/.config/Codex/
+/home/.config/discord/
+/home/.config/spotify/
+/home/.codex/
+/home/.var/
+/home/.local/state/

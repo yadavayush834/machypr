@@ -223,10 +223,24 @@ if kind == 'network':
  import threading
  panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=5)
  panel.set_border_width(6);panel.set_size_request(290,-1)
- heading=Gtk.Label();heading.set_markup('<b>Wi-Fi</b>');heading.set_xalign(0)
+ heading=Gtk.Label();heading.set_markup('<b>Network</b>');heading.set_xalign(0)
  panel.pack_start(heading,False,False,4)
  connection=Gtk.Label(label=status_module['network_state']()[1]);connection.set_xalign(0)
  panel.pack_start(connection,False,False,0)
+ # Only offer interfaces that already have a usable default route.
+ try:
+  routes=json.loads(subprocess.check_output(['ip','-j','-4','route','show','default']))
+ except (OSError,subprocess.CalledProcessError,ValueError):routes=[]
+ available=set('wifi' if (Path('/sys/class/net')/r['dev']/'wireless').exists() else 'ethernet' for r in routes if r.get('gateway') and r.get('dev'))
+ choices=Gtk.Box(spacing=6)
+ for label,network_kind in [('Use Wi-Fi','wifi'),('Use Ethernet','ethernet')]:
+  choice=Gtk.Button(label=label);choice.set_sensitive(network_kind in available)
+  def select_network(_,network_kind=network_kind):
+   global pending_action
+   pending_action=lambda:run(['pkexec',local('macos-network-select'),network_kind])
+   Gtk.main_quit()
+  choice.connect('clicked',select_network);choices.pack_start(choice,True,True,0)
+ panel.pack_start(choices,False,False,3)
  note=Gtk.Label(label='Looking for nearby networks…');note.set_xalign(0)
  panel.pack_start(note,False,False,3)
  scroller=Gtk.ScrolledWindow();scroller.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC)

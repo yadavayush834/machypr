@@ -102,9 +102,6 @@ for _,key in ipairs({"Alt_L","Alt_R"}) do
  hl.bind(key,hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-cycle-window --end"),{release=true,ignore_mods=true,non_consuming=true})
 end
 
--- Restore the display immediately on lid open, including at the lock screen.
-hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd('hyprctl dispatch \'hl.dsp.dpms({ action = "enable" })\''), {locked=true})
-
 -- User changes made through System Settings.
 pcall(dofile,os.getenv('HOME')..'/.config/hypr/settings-overrides.lua')
 pcall(dofile,os.getenv('HOME')..'/.config/hypr/display-settings.lua')

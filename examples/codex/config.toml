@@ -1,3 +1,0 @@
-# Merge this top-level setting into ~/.codex/config.toml before any [tables].
-# Preserve your existing model, provider and other settings.
-cli_auth_credentials_store = "file"

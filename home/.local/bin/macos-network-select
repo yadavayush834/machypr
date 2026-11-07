@@ -1,0 +1,25 @@
+#!/usr/bin/python3
+"""Prefer a connected interface while retaining its DHCP-provided route."""
+import json, subprocess, sys
+from pathlib import Path
+
+def routes():
+    return json.loads(subprocess.check_output(['/usr/bin/ip','-j','-4','route','show','default']))
+
+def kind(route):
+    return 'wifi' if (Path('/sys/class/net') / route['dev'] / 'wireless').exists() else 'ethernet'
+
+def main():
+    if len(sys.argv) != 2 or sys.argv[1] not in ('wifi','ethernet'):
+        sys.exit('Expected wifi or ethernet')
+    current=routes()
+    candidates=[r for r in current if r.get('gateway') and r.get('protocol') != '99' and kind(r)==sys.argv[1]]
+    if not candidates: sys.exit('No connected default route for that network')
+    chosen=min(candidates,key=lambda r:r.get('metric',0))
+    command=['/usr/bin/ip','-4','route','replace','default','via',chosen['gateway'],'dev',chosen['dev'],'metric','10','proto','99']
+    subprocess.run(command,check=True)
+    for route in current:
+        if str(route.get('protocol')) == '99' and route.get('dev') != chosen['dev']:
+            subprocess.run(['/usr/bin/ip','-4','route','del','default','via',route['gateway'],'dev',route['dev'],'metric','10','proto','99'],check=True)
+
+if __name__=='__main__': main()

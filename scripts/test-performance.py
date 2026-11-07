@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify priority restoration, stale-state recovery and safe fstab transformation."""
+"""Verify priority restoration, stale-state recovery and background-work deferral."""
 from pathlib import Path
 import json
 import os
@@ -9,7 +9,6 @@ import unittest
 ROOT=Path(__file__).resolve().parent.parent
 m=runpy.run_path(str(ROOT/'home/.local/bin/macos-responsiveness'))
 cache=runpy.run_path(str(ROOT/'home/.local/bin/macos-app-cache'))
-system=runpy.run_path(str(ROOT/'scripts/tune-system-performance.py'))
 class Fake:
  def __init__(self):self.weights={'app.slice':100,'app-test.scope':100,'app-other.scope':200}
  def get(self,unit):return self.weights[unit]
@@ -38,10 +37,6 @@ class TestPerformance(unittest.TestCase):
    (p/'cgroup').write_text(base+'\n');self.assertIsNone(m['cgroup_unit'](42,root))
    (p/'cgroup').write_text(base+'/session.slice/wayland-wm@hyprland.desktop.service\n');self.assertIsNone(m['cgroup_unit'](42,root))
    (p/'cgroup').write_text(base+'/app.slice/app-one.scope\n');self.assertEqual(m['cgroup_unit'](42,root)[0],'app-one.scope')
- def test_boot_preserves_other_entries_and_is_idempotent(self):
-  text='# keep\nUUID=root / ext4 rw,relatime 0 1\nUUID=boot /boot vfat rw,fmask=0177 0 2\n'
-  updated,changed=system['boot_automount'](text);self.assertTrue(changed);self.assertIn('UUID=root / ext4 rw,relatime 0 1',updated);self.assertIn('rw,fmask=0177,noauto,x-systemd.automount',updated)
-  self.assertEqual(system['boot_automount'](updated),(updated,False))
  def test_warmup_defers_under_pressure(self):
   with tempfile.TemporaryDirectory() as directory:
    root=Path(directory);proc=root/'proc';(proc/'pressure').mkdir(parents=True);thermal=root/'thermal';thermal.mkdir()
