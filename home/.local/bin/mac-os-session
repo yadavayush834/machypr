@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+"""Direct SDDM session with configuration preflight and one recovery attempt."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import subprocess
+import sys
+import time
+
+home = Path.home()
+state = home / '.local/state/mac-os'
+state.mkdir(parents=True, exist_ok=True)
+os.umask(0o077)
+env = os.environ.copy()
+env.update(XDG_CURRENT_DESKTOP='Hyprland', XDG_SESSION_TYPE='wayland', XDG_SESSION_DESKTOP='Hyprland')
+env['PATH'] = str(home / '.local/bin') + ':' + env.get('PATH', '/usr/bin')
+# A previous compositor's activation environment must not select its socket.
+env.pop('HYPRLAND_INSTANCE_SIGNATURE', None)
+env.pop('WAYLAND_DISPLAY', None)
+normal = home / '.config/hypr/hyprland.lua'
+recovery = home / '.config/hypr/mac-os-recovery.lua'
+safe = '--recovery' in sys.argv
+status = {'started': time.time(), 'recovery': safe, 'events': []}
+def record(event):
+    status['events'].append({'time': time.time(), 'event': event})
+    (state / 'last-session.json').write_text(json.dumps(status, indent=2))
+
+try:
+    trusted = json.loads((home / '.local/share/startup-tuning/plugin-baseline.json').read_text())
+    for filename, digest in trusted.items():
+        if hashlib.sha256(Path(filename).read_bytes()).hexdigest() != digest:
+            env['MACOS_DISABLE_PLUGINS'] = '1'
+            record('Compositor or plugin changed since validation; optional title-bar plugin disabled.')
+            break
+except (OSError, ValueError):
+    env['MACOS_DISABLE_PLUGINS'] = '1'
+    record('No trusted plugin baseline; optional title-bar plugin disabled.')
+
+def verify(config):
+    try:
+        result = subprocess.run(['/usr/bin/Hyprland', '--verify-config', '--config', str(config)],
+                                env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=10)
+        (state / ('recovery-check.log' if config == recovery else 'config-check.log')).write_bytes(result.stdout)
+        return result.returncode == 0 and b'config ok' in result.stdout.lower()
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+if not safe and not verify(normal):
+    safe = True
+    record('Normal configuration failed preflight; starting recovery.')
+if safe and not verify(recovery):
+    record('Recovery preflight failed; returning to login without a restart loop.')
+    sys.exit(1)
+
+child = None
+stopping = False
+def stop(signum, frame):
+    global stopping
+    stopping = True
+    if child is not None and child.poll() is None:
+        child.send_signal(signum)
+signal.signal(signal.SIGTERM, stop)
+signal.signal(signal.SIGINT, stop)
+
+def run(config, safe_mode):
+    global child
+    status['recovery'] = safe_mode
+    record('Starting ' + ('recovery' if safe_mode else 'normal') + ' compositor.')
+    with (state / ('recovery.log' if safe_mode else 'session.log')).open('w') as log:
+        child = subprocess.Popen(['/usr/bin/Hyprland', '--config', str(config)], env=env, stdout=log, stderr=subprocess.STDOUT)
+        # Only a new compositor is subject to this timeout. A running desktop
+        # is never killed by the background health check.
+        deadline = time.monotonic() + 45
+        ready = False
+        runtime = Path(env.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')) / 'hypr'
+        while child.poll() is None and not stopping:
+            for path in runtime.glob('*'):
+                try:
+                    if int((path / 'hyprland.lock').read_text().splitlines()[0]) != child.pid:
+                        continue
+                    with socket.socket(socket.AF_UNIX) as ipc:
+                        ipc.settimeout(0.5)
+                        ipc.connect(str(path / '.socket.sock'))
+                        ipc.sendall(b'j/monitors')
+                        monitors = json.loads(ipc.recv(65536))
+                    ready = bool(monitors)
+                    if ready:
+                        break
+                except (OSError, ValueError, IndexError):
+                    continue
+            if ready:
+                record('Display ready.')
+                break
+            if time.monotonic() >= deadline:
+                record('Display did not become ready within 45 seconds; stopping failed startup.')
+                child.terminate()
+                try:
+                    child.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait()
+                return 124
+            time.sleep(0.25)
+        result = child.wait()
+    record('Compositor exited with status ' + str(result))
+    return result
+
+try:
+    result = run(recovery if safe else normal, safe)
+    if result != 0 and not safe and not stopping:
+        record('Compositor failed; making one plugin-free recovery attempt.')
+        if verify(recovery):
+            result = run(recovery, True)
+    sys.exit(0 if stopping else (result if result >= 0 else 128 - result))
+except OSError as exc:
+    record('Session launch failed: ' + str(exc))
+    sys.exit(1)

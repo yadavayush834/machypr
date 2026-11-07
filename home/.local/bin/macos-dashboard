@@ -1,0 +1,216 @@
+#!/usr/bin/python
+"""On-demand native dashboard, styled after MacDashboard's local-first panels."""
+import datetime
+import fcntl
+import json
+import os
+from pathlib import Path
+import runpy
+import shutil
+import signal
+import subprocess
+import sys
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('GtkLayerShell', '0.1')
+from gi.repository import Gtk, Gdk, GLib, GtkLayerShell as Layer
+
+HOME = Path.home()
+os.umask(0o077)
+lock = open(Path(os.environ.get('XDG_RUNTIME_DIR', '/tmp')) / f'macos-dashboard-{os.getuid()}.lock', 'w')
+try:
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit(0)
+note_path = HOME / '.local/share/macos-desktop/dashboard-note.txt'
+appearance = runpy.run_path(str(HOME / '.local/bin/macos-appearance'))
+dark = appearance['current']() == 'dark'
+win = Gtk.Window(title='Dashboard')
+win.set_name('macos-dashboard')
+win.set_decorated(False)
+win.set_resizable(False)
+visual = win.get_screen().get_rgba_visual()
+if visual:
+    win.set_visual(visual)
+Layer.init_for_window(win)
+Layer.set_namespace(win, 'macos-dashboard')
+Layer.set_layer(win, Layer.Layer.OVERLAY)
+Layer.set_keyboard_mode(win, Layer.KeyboardMode.EXCLUSIVE)
+monitor = Gdk.Display.get_default().get_monitor(0).get_geometry()
+width, height = min(820, monitor.width - 48), min(568, monitor.height - 64)
+win.set_size_request(width, height)
+
+def label(text, style=None):
+    widget = Gtk.Label(label=text, xalign=0)
+    if style:
+        widget.get_style_context().add_class(style)
+    return widget
+
+outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=22)
+outer.set_border_width(28)
+win.add(outer)
+header = Gtk.Box(spacing=18)
+heading = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+heading.pack_start(label('Dashboard', 'dashboard-title'), False, False, 0)
+date = label('', 'secondary')
+heading.pack_start(date, False, False, 0)
+header.pack_start(heading, True, True, 0)
+close = Gtk.Button.new_from_icon_name('window-close-symbolic', Gtk.IconSize.BUTTON)
+close.get_style_context().add_class('quiet')
+close.set_tooltip_text('Close · Esc')
+close.get_accessible().set_name('Close Dashboard')
+close.set_valign(Gtk.Align.START)
+header.pack_end(close, False, False, 0)
+outer.pack_start(header, False, False, 0)
+
+body = Gtk.Box(spacing=24)
+body.set_vexpand(True)
+outer.pack_start(body, True, True, 0)
+left = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+left.set_size_request(268, -1)
+body.pack_start(left, False, False, 0)
+clock = label('', 'dashboard-clock')
+left.pack_start(clock, False, False, 0)
+calendar = Gtk.Calendar()
+calendar.set_display_options(Gtk.CalendarDisplayOptions.SHOW_HEADING | Gtk.CalendarDisplayOptions.SHOW_DAY_NAMES)
+calendar.mark_day(datetime.date.today().day)
+calendar.get_accessible().set_name('Calendar')
+left.pack_start(calendar, True, True, 0)
+system = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=5)
+system.get_style_context().add_class('status-area')
+battery = label('', 'secondary')
+storage = label('', 'secondary')
+system.pack_start(battery, False, False, 0)
+system.pack_start(storage, False, False, 0)
+left.pack_start(system, False, False, 0)
+
+right = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+right.set_hexpand(True)
+right.get_style_context().add_class('notes-panel')
+note_header = Gtk.Box(spacing=12)
+note_header.pack_start(label('Quick Note', 'section-title'), True, True, 0)
+saved = label('Saved on this laptop', 'secondary')
+note_header.pack_end(saved, False, False, 0)
+right.pack_start(note_header, False, False, 0)
+scroll = Gtk.ScrolledWindow()
+scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+scroll.set_vexpand(True)
+text = Gtk.TextView()
+text.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+text.set_left_margin(16)
+text.set_right_margin(16)
+text.set_top_margin(16)
+text.set_bottom_margin(16)
+text.get_accessible().set_name('Quick Note. Saved locally as you type.')
+buffer = text.get_buffer()
+try:
+    buffer.set_text(note_path.read_text() if note_path.exists() else '')
+except OSError:
+    saved.set_text('Could not read note')
+    text.set_editable(False)
+scroll.add(text)
+right.pack_start(scroll, True, True, 0)
+hint = label('A place for the next thing on your mind.', 'secondary')
+hint.set_line_wrap(True)
+right.pack_start(hint, False, False, 0)
+body.pack_start(right, True, True, 0)
+
+pending = None
+dirty = False
+def save_note():
+    global pending, dirty
+    pending = None
+    if not dirty:
+        return False
+    try:
+        note_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = note_path.with_suffix('.tmp')
+        temporary.write_text(buffer.get_text(buffer.get_start_iter(), buffer.get_end_iter(), True))
+        temporary.replace(note_path)
+        saved.set_text('Saved on this laptop')
+        dirty = False
+    except OSError:
+        saved.set_text('Could not save — keep this open')
+    return False
+
+def changed(*_):
+    global pending, dirty
+    dirty = True
+    if pending:
+        GLib.source_remove(pending)
+    saved.set_text('Saving…')
+    pending = GLib.timeout_add(500, save_note)
+buffer.connect('changed', changed)
+
+def dismiss(*_):
+    global pending
+    if pending:
+        GLib.source_remove(pending)
+        pending = None
+    save_note()
+    if dirty:
+        return
+    Gtk.main_quit()
+close.connect('clicked', dismiss)
+GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGTERM, lambda: (dismiss() or False))
+win.connect('delete-event', lambda *_: (dismiss() or True))
+win.connect('key-press-event', lambda _, event: (dismiss() or True) if event.keyval == Gdk.KEY_Escape else False)
+
+footer = Gtk.Box(spacing=10)
+for name, icon, command in [
+    ('Files', 'system-file-manager', ['dolphin']),
+    ('Applications', 'view-app-grid', [str(HOME / '.local/bin/macos-launchpad')]),
+    ('Control Center', 'preferences-system-symbolic', [str(HOME / '.local/bin/macos-menu'), 'control'])]:
+    button = Gtk.Button(label=name)
+    button.set_image(Gtk.Image.new_from_icon_name(icon, Gtk.IconSize.BUTTON))
+    button.set_always_show_image(True)
+    def launch(_, command=command):
+        save_note()
+        if dirty:
+            return
+        subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        Gtk.main_quit()
+    button.connect('clicked', launch)
+    footer.pack_start(button, False, False, 0)
+outer.pack_start(footer, False, False, 0)
+
+status = runpy.run_path(str(HOME / '.local/bin/macos-status'))
+def update():
+    now = datetime.datetime.now()
+    date.set_text(now.strftime('%A, %-d %B'))
+    clock.set_text(now.strftime('%H:%M'))
+    power = status['battery_state']()
+    battery.set_text(('Battery  ' + str(power['capacity']) + '% · ' + power['label']) if power['available'] else 'Power information unavailable')
+    disk = shutil.disk_usage(HOME)
+    storage.set_text(f'{disk.free / 1024**3:.0f} GB available on this laptop')
+    hint.set_visible(buffer.get_char_count() == 0)
+    return True
+
+bg, ink, secondary, paper, edge = ('rgba(26,31,41,.94)', '#f6f8fc', '#b9c6d9', '#202631', 'rgba(231,241,255,.26)') if dark else ('rgba(241,246,252,.94)', '#162234', '#46586c', '#ffffff', 'rgba(255,255,255,.85)')
+css = Gtk.CssProvider()
+css.load_from_data(f'''
+window#macos-dashboard {{background:{bg};border:1px solid {edge};border-radius:24px;color:{ink};}}
+#macos-dashboard label {{font-family:Inter;color:{ink};font-size:13px;}}
+#macos-dashboard .dashboard-title {{font-size:25px;font-weight:600;}}
+#macos-dashboard .dashboard-clock {{font-size:48px;font-weight:500;}}
+#macos-dashboard .section-title {{font-size:16px;font-weight:600;}}
+#macos-dashboard .secondary {{color:{secondary};font-size:11px;}}
+#macos-dashboard textview, #macos-dashboard textview text {{background:{paper};color:{ink};font-family:Inter;font-size:14px;caret-color:{ink};}}
+#macos-dashboard textview text selection {{background:#0a72e8;color:white;}}
+#macos-dashboard scrolledwindow {{border-radius:12px;border:1px solid {edge};}}
+#macos-dashboard button {{background:rgba(128,153,184,.14);border:0;box-shadow:none;border-radius:10px;padding:8px 12px;min-height:18px;}}
+#macos-dashboard button label {{font-size:12px;}}
+#macos-dashboard button:hover {{background:rgba(128,153,184,.28);}}
+#macos-dashboard button:focus {{outline:2px solid #559cff;outline-offset:1px;}}
+#macos-dashboard button.quiet {{padding:8px;}}
+#macos-dashboard calendar {{background:transparent;border:0;color:{ink};font-size:12px;}}
+#macos-dashboard calendar:selected {{background:#0a72e8;color:white;border-radius:6px;}}
+#macos-dashboard .status-area {{padding-top:8px;}}
+'''.encode())
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 40)
+update()
+GLib.timeout_add_seconds(10, update)
+win.show_all()
+hint.set_visible(buffer.get_char_count() == 0)
+close.grab_focus()
+Gtk.main()

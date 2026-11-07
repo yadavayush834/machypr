@@ -1,5 +1,5 @@
 #!/usr/bin/python
-"""HiDPI-rendered WhiteSur dock with restrained magnification and auto-hide."""
+"""HiDPI Tahoe dock with restrained magnification and auto-hide."""
 import gi
 import json
 import math
@@ -10,6 +10,7 @@ import socket
 import runpy
 import subprocess
 import time
+import cairo
 
 gi.require_version('Gtk','3.0')
 gi.require_version('GtkLayerShell','0.1')
@@ -19,6 +20,8 @@ from gi.repository import Gtk,Gdk,Gio,GLib,GtkLayerShell,Pango,PangoCairo
 HOME=Path.home()
 APPEARANCE=runpy.run_path(str(HOME/".local/bin/macos-appearance"))
 DARK=APPEARANCE["current"]()=="dark"
+GLASS=runpy.run_path(str(HOME/".local/bin/macos-glass"))
+GLASS_MODE=GLASS['enabled']()
 MODEL=runpy.run_path(str(HOME/'.local/bin/macos-dock-model'))
 KNOWN={'org.kde.dolphin':('Finder','system-file-manager'),
        'brave-browser':('Brave','brave-browser'),'kitty':('Terminal','utilities-terminal'),
@@ -33,8 +36,28 @@ for app in Gio.AppInfo.get_all():
     for key in keys:
         if key:DESKTOP_APPS.setdefault(key.removesuffix('.desktop').rsplit('/',1)[-1].casefold(),app)
 LAUNCHPAD=('Launchpad','','view-app-grid',[str(HOME/'.local/bin/macos-launchpad')])
+DASHBOARD=('Dashboard','','x-office-calendar',[str(HOME/'.local/bin/macos-dashboard')])
 TRASH=('Trash','','user-trash',['dolphin','trash:/'])
-APPS=[LAUNCHPAD,TRASH]
+# Everyday launchers persist, including apps installed while the dock is running.
+def pinned_apps():
+ pins=[
+  ('Finder','org.kde.dolphin','system-file-manager',['dolphin']),
+  ('Visual Studio Code','code','visual-studio-code',[str(HOME/'.local/bin/code'),'--new-window']),
+  ('Brave','brave-browser','brave-browser',[str(HOME/'.local/bin/brave'),'--new-window']),
+  ('Terminal','kitty','utilities-terminal',['kitty']),
+ ]
+ for app_id,classname,label,icon in [
+  ('com.usebruno.Bruno','bruno','Bruno','bruno'),
+  ('io.dbeaver.DBeaverCommunity','DBeaver','DBeaver','dbeaver'),
+  ('org.gnome.meld','meld','Meld','meld'),
+  ('org.gnome.gitg','gitg','Gitg','gitg'),
+ ]:
+  exports=[HOME/'.local/share/flatpak/exports/share/applications',Path('/var/lib/flatpak/exports/share/applications')]
+  if any((folder/(app_id+'.desktop')).exists() for folder in exports):
+   pins.append((label,classname,icon,['flatpak','run',app_id]+(['--ozone-platform=wayland'] if app_id=='com.usebruno.Bruno' else [])))
+ return pins
+PINNED=pinned_apps()
+APPS=[LAUNCHPAD,*PINNED,DASHBOARD,TRASH]
 BASE=52
 SLOT=60
 EDGE=16
@@ -53,8 +76,20 @@ def spawn(args):
     subprocess.Popen(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
 
 def query(command):
-    try:return json.loads(subprocess.check_output(['hyprctl',command,'-j'],stderr=subprocess.DEVNULL,timeout=.6))
-    except (OSError,subprocess.SubprocessError,ValueError):return None
+    # Talk to the compositor directly, without starting hyprctl for every query.
+    try:
+        path=Path(os.environ['XDG_RUNTIME_DIR'])/'hypr'/SESSION/'.socket.sock'
+        with socket.socket(socket.AF_UNIX,socket.SOCK_STREAM) as connection:
+            connection.settimeout(.25)
+            connection.connect(str(path))
+            connection.sendall(('j/'+command).encode())
+            chunks=[]
+            while True:
+                data=connection.recv(65536)
+                if not data:break
+                chunks.append(data)
+        return json.loads(b''.join(chunks))
+    except (OSError,ValueError,KeyError):return None
 
 def clients():return query('clients') or []
 
@@ -66,15 +101,17 @@ def activate(index):
     if not workspace or 'name' not in workspace:return
     # Re-query at click time: never follow a stale icon to another workspace.
     groups=MODEL['workspace_apps'](clients(),workspace.get('id',workspace['name']),origins)
-    active=query('activewindow') or {}
-    window=MODEL['activation_target'](groups.get(classname,[]),active.get('address'))
+    active=(query('activewindow') or {}) if MODEL['matching_windows'](groups,classname) else {}
+    window=MODEL['activation_target'](MODEL['matching_windows'](groups,classname),active.get('address'))
     if window:
         target=json.dumps('address:'+window['address'])
         if window['workspace']['name']=='special:minimized':
             subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace='+json.dumps(workspace['name'])+',window='+target+',follow=false})'],stdout=subprocess.DEVNULL)
         subprocess.run(['hyprctl','dispatch','hl.dsp.focus({window='+target+'})'],stdout=subprocess.DEVNULL)
         subprocess.run(['hyprctl','dispatch','hl.dsp.window.bring_to_top()'],stdout=subprocess.DEVNULL)
-    refresh()
+    elif cmd:
+        spawn(cmd)
+    GLib.idle_add(refresh_event)
 
 def rounded(cr,x,y,w,h,r):
     cr.new_sub_path()
@@ -82,7 +119,7 @@ def rounded(cr,x,y,w,h,r):
         cr.arc(cx,cy,r,math.radians(start),math.radians(start+90))
     cr.close_path()
 
-theme=Gtk.IconTheme.new();theme.set_custom_theme('WhiteSur')
+theme=Gtk.IconTheme.new();theme.set_custom_theme('MacTahoe')
 icon_cache={}
 def load_icon(icon):
     key=icon.to_string() if isinstance(icon,Gio.Icon) else icon
@@ -118,7 +155,19 @@ def draw(widget,cr):
     y=HEIGHT-79
     for spread in range(8,0,-1):
         cr.set_source_rgba(0,0,0,.006*(9-spread));rounded(cr,8-spread/2,y+3-spread/2,WIDTH-16+spread,72+spread,20+spread/2);cr.fill()
-    rounded(cr,8,y,WIDTH-16,73,20);cr.set_source_rgba(*((.16,.16,.18,.90) if DARK else (.94,.94,.96,.82)));cr.fill_preserve();cr.set_source_rgba(1,1,1,.20 if DARK else .72);cr.set_line_width(1);cr.stroke()
+    glass=GLASS_MODE
+    rounded(cr,8,y,WIDTH-16,73,22);cr.set_source_rgba(*((.13,.17,.23,.74 if glass else .94) if DARK else (.94,.97,1,.72 if glass else .90)));cr.fill_preserve();cr.set_source_rgba(1,1,1,.32 if DARK else .82);cr.set_line_width(1);cr.stroke()
+    if glass:
+        # Static rim lighting with pointer-responsive glare; no idle animation.
+        cr.save();rounded(cr,9,y+1,WIDTH-18,71,19);cr.clip()
+        shine=cairo.LinearGradient(0,y,0,y+73)
+        shine.add_color_stop_rgba(0,1,1,1,.40);shine.add_color_stop_rgba(.08,1,1,1,.08);shine.add_color_stop_rgba(.65,1,1,1,0);shine.add_color_stop_rgba(1,1,1,1,.18)
+        cr.set_source(shine);cr.paint()
+        if state['smooth_pointer'] is not None:
+            glow=cairo.RadialGradient(state['smooth_pointer'],y,0,state['smooth_pointer'],y,105)
+            glow.add_color_stop_rgba(0,1,1,1,.25);glow.add_color_stop_rgba(1,1,1,1,0)
+            cr.set_source(glow);cr.paint()
+        cr.restore()
     cr.set_source_rgba(*((.80,.80,.85,.25) if DARK else (.25,.25,.29,.22)));x=EDGE+(len(APPS)-1)*SLOT+DIVIDER/2;cr.move_to(x,y+13);cr.line_to(x,y+59);cr.set_line_width(.75);cr.stroke()
     for i,(_,classname,_,_) in enumerate(APPS):
         distance=abs(center(i)-(state['smooth_pointer'] if state['smooth_pointer'] is not None else -1000))
@@ -203,8 +252,9 @@ def frame(widget,clock):
     return not settled
 
 def refresh():
-    global DARK,APPS,icons,WIDTH,SLOT,BASE
+    global DARK,APPS,icons,WIDTH,SLOT,BASE,GLASS_MODE,PINNED
     DARK=APPEARANCE['current']()=='dark'
+    GLASS_MODE=GLASS['enabled']()
     workspace=query('activeworkspace')
     windows=query('clients')
     if not workspace or 'name' not in workspace or not isinstance(windows,list):return True
@@ -217,8 +267,11 @@ def refresh():
             temporary.write_text(json.dumps({'session':SESSION,'origins':origins}))
             temporary.replace(CACHE)
         except OSError:pass
-    apps=[LAUNCHPAD]
+    PINNED=pinned_apps()
+    apps=[LAUNCHPAD,*PINNED,DASHBOARD]
+    pinned_classes=MODEL['pinned_class_names'](PINNED)
     for classname in groups:
+        if classname.casefold() in pinned_classes:continue
         desktop=DESKTOP_APPS.get(classname.casefold())
         if classname in KNOWN:label,icon=KNOWN[classname]
         elif desktop:label,icon=desktop.get_display_name(),desktop.get_icon() or 'application-x-executable'
@@ -234,7 +287,7 @@ def refresh():
         WIDTH=int(EDGE*2+SLOT*len(APPS)+DIVIDER)
         canvas.set_size_request(WIDTH,HEIGHT);window.resize(WIDTH,HEIGHT)
         state['hover']=None;state['pointer']=None;state['focus']=min(state['focus'],len(APPS)-1)
-    state['running']=set(groups)
+    state['running']={a[1] for a in APPS if a[1] and MODEL['matching_windows'](groups,a[1])}
     canvas.queue_draw();return True
 
 # Workspace/open/close/move events update the shelf without waiting for polling.

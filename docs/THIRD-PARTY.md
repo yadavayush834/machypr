@@ -26,3 +26,10 @@ uses WhiteSur.png.
 ## Optional local sound samples
 
 `scripts/install-sounds.py` downloads notification (Glass), critical (Basso), volume feedback (Media_Keys) and screenshot (Screen_Capture) samples from [ThisIsNoahEvans/BigSurSounds](https://github.com/ThisIsNoahEvans/BigSurSounds), pinned at `20dab112698edc9523afe9f09b8e921f75da8a96`. The original macOS sound recordings belong to Apple; audio is stored only under the installing user’s sound directory and is not redistributed in this repository. The installer converts them to WAV with FFmpeg.
+
+## November 7 additions
+
+- [MacTahoe GTK theme](https://github.com/vinceliuice/MacTahoe-gtk-theme), revision `1e45e19f510edb8cde18fa84d6cd5319f60b086b`: upstream prebuilt Dark/Light archives, with COPYING retained during installation.
+- [MacTahoe icons](https://github.com/vinceliuice/MacTahoe-icon-theme), revision `839848b9a8a38a92a6936e30c4abe35cc6f2546d`: upstream local icon installer retains COPYING and AUTHORS.
+- `home/.local/bin/mac-os-checkupdates` derives from pacman-contrib checkupdates by Kyle Keen and other contributors, GPL-2.0-or-later. Its original notice is retained; see [license](LICENSE-checkupdates).
+- [MacDashboard](https://github.com/wildfellhall/MacDashboard) informed the local notes/dashboard concept. The GTK implementation is original and has no AI service. Glass references informed rim lighting and translucent layering; no browser shader runtime or KDE component is embedded. [Exact reference revisions](visual-sources.json).

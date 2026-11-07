@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Optional native frosted-glass material; no global application transparency."""
+import json
+from pathlib import Path
+import subprocess
+import argparse
+
+
+def enabled(home=None):
+    home=Path.home() if home is None else home
+    try:return json.loads((home/'.config/macos-desktop/glass.json').read_text()).get('enabled') is True
+    except (OSError,ValueError,AttributeError):return False
+
+
+def apply(value,home=None,session=True):
+    home=Path.home() if home is None else home
+    def write(path,text):
+        path.parent.mkdir(parents=True,exist_ok=True)
+        temp=path.with_suffix('.tmp');temp.write_text(text);temp.replace(path)
+    write(home/'.config/macos-desktop/glass.json',json.dumps({'enabled':bool(value)},indent=2)+'\n')
+    config='-- Standard appearance; no glass overrides.\n'
+    if value:
+        config='''-- Optional glass chrome. Application content remains opaque.
+hl.config({decoration={rounding=16,blur={enabled=true,size=6,passes=2,vibrancy=0.18},shadow={enabled=true,range=30,render_power=3,color=0x66000000}}})
+for _,name in ipairs({'macos-dock','macos-menu','macos-menubar','macos-spotlight','macos-launchpad','macos-osd','macos-dashboard'}) do
+ hl.layer_rule({match={namespace=name},blur=true,ignore_alpha=0.2})
+end
+if hl.plugin.hyprbars then
+ local dark=true
+ local f=io.open(os.getenv('HOME')..'/.config/macos-desktop/appearance.json','r')
+ if f then local s=f:read('*a');f:close();dark=not s:match('"applied"%s*:%s*"light"') end
+ hl.config({plugin={hyprbars={bar_blur=true,bar_color=dark and 'rgba(303038b8)' or 'rgba(f1f5ffca)'}}})
+end
+hl.curve('glass',{type='bezier',points={{0.2,0.85},{0.25,1}}})
+hl.animation({leaf='windows',enabled=true,speed=4,bezier='glass',style='popin 98%'})
+'''
+    write(home/'.config/hypr/macos-glass.lua',config)
+    if session:subprocess.run(['hyprctl','reload','config-only'],check=True,stdout=subprocess.DEVNULL)
+
+
+def attach():
+    """Live CSS for owned shell surfaces only; empty provider restores defaults."""
+    import gi
+    gi.require_version('Gtk','3.0')
+    from gi.repository import Gtk,Gdk,GLib
+    provider=Gtk.CssProvider()
+    Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),provider,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+30)
+    previous=[None]
+    import runpy
+    appearance=runpy.run_path(str(Path.home()/'.local/bin/macos-appearance'))
+    def update():
+        dark=appearance['current']()=='dark'
+        state=(enabled(),dark)
+        if state==previous[0]:return True
+        previous[0]=state
+        css=''
+        if state[0]:
+            bg='rgba(24,31,43,.90)' if dark else 'rgba(241,247,253,.90)'
+            fg='#f7f9ff' if dark else '#172132'
+            edge='rgba(229,240,255,.28)' if dark else 'rgba(255,255,255,.88)'
+            surfaces='window#macos-menu,window#spotlight,window#launchpad,window#macos-osd'
+            css=f'''{surfaces} {{background-image:linear-gradient(to bottom,rgba(255,255,255,.12),rgba(255,255,255,0));background-color:{bg};border:1px solid {edge};border-radius:18px;color:{fg};}}
+window#macos-menubar {{background-color:{bg};background-image:linear-gradient(to bottom,rgba(255,255,255,.10),rgba(255,255,255,0));border-bottom:1px solid rgba(255,255,255,.18);}}
+#macos-menu .control-tile {{background:rgba(132,164,205,.16);border:1px solid {edge};border-radius:14px;min-width:116px;min-height:42px;padding:8px;}}
+#macos-menu .control-tile label {{font-size:12px;font-weight:500;}}
+#macos-menu .panel-title {{font-size:17px;font-weight:600;margin-bottom:4px;}}
+#macos-menu button {{border-radius:9px;padding-top:6px;padding-bottom:6px;}}
+#macos-menu scale trough {{background:rgba(132,164,205,.28);min-height:12px;border-radius:8px;}}
+#macos-menu scale highlight {{background:#91bfff;min-height:12px;border-radius:8px;}}
+#macos-menu scale slider {{background:#f7faff;border:1px solid rgba(64,92,132,.3);min-width:20px;min-height:20px;}}
+#macos-menu button:focus {{outline:2px solid #78b2ff;outline-offset:-2px;}}
+#spotlight entry {{background:transparent;border:0;box-shadow:none;}}
+#launchpad entry {{border-radius:12px;}}
+
+#macos-menu button {{transition:background-color 140ms ease;}}
+#macos-menu button:hover {{background-color:#1479e8;}}
+#macos-menu label,#spotlight label {{color:{fg};}}
+#macos-menu button:hover label,#macos-menu button:focus label,#spotlight row:selected label {{color:white;}}
+'''
+        provider.load_from_data(css.encode())
+        return True
+    update();GLib.timeout_add_seconds(2,update)
+    return provider
+
+
+if __name__=='__main__':
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('mode',choices=['on','off','status'])
+    args=parser.parse_args()
+    if args.mode=='status':print(json.dumps({'enabled':enabled()}))
+    else:apply(args.mode=='on')

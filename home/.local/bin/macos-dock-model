@@ -28,3 +28,24 @@ def activation_target(windows, active_address=None):
     if not ordered:return None
     if len(ordered)>1 and ordered[0]['address']==active_address:return ordered[1]
     return ordered[0]
+
+
+APP_ALIASES={
+ 'org.kde.dolphin':{'org.kde.dolphin','dolphin'},
+ 'brave-browser':{'brave-browser','com.brave.browser','brave'},
+ 'code':{'code','code-oss','visual-studio-code'},
+ 'bruno':{'bruno','com.usebruno.bruno'},
+ 'DBeaver':{'dbeaver','io.dbeaver.dbeavercommunity'},
+ 'meld':{'meld','org.gnome.meld'},
+ 'gitg':{'gitg','org.gnome.gitg'},
+}
+
+def aliases_for(classname):
+ return {x.casefold() for x in APP_ALIASES.get(classname,{classname})}
+
+def matching_windows(groups,classname):
+ names=aliases_for(classname)
+ return [window for name,windows in groups.items() if name.casefold() in names for window in windows]
+
+def pinned_class_names(pins):
+ return {name for pin in pins for name in aliases_for(pin[1])}

@@ -4,7 +4,7 @@ hl.env("XCURSOR_THEME", "WhiteSur-cursors")
 hl.env("XCURSOR_SIZE", "24")
 hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
 hl.config({
- general={gaps_in=5,gaps_out=10,border_size=1,resize_on_border=true,layout="dwindle",
+ general={gaps_in=5,gaps_out=10,border_size=1,resize_on_border=false,layout="dwindle",
   col={active_border={colors={"rgba(5ca9dfee)","rgba(3778b7ee)"},angle=45},inactive_border="rgba(293345aa)"}},
  decoration={rounding=12,active_opacity=1.0,inactive_opacity=1.0,
   shadow={enabled=true,range=28,render_power=3,color=0x66000000},
@@ -83,9 +83,24 @@ run("SUPER + CTRL + SHIFT + 4",os.getenv("HOME").."/.local/bin/macos-screenshot 
 
 pcall(dofile,os.getenv('HOME')..'/.config/hypr/macos-window-bars.lua')
 
+
 -- Frosted transient surfaces and familiar desktop window actions.
 hl.layer_rule({match={namespace="macos-menu"},blur=true})
 hl.layer_rule({match={namespace="macos-spotlight"},blur=true})
 hl.bind("SUPER + M",hl.dsp.window.move({workspace="special:minimized",follow=false}))
 hl.bind("SUPER + CTRL + F",hl.dsp.window.fullscreen({mode="fullscreen"}))
 hl.layer_rule({match={namespace="macos-osd"},blur=true})
+
+pcall(dofile,os.getenv('HOME')..'/.config/hypr/macos-glass.lua')
+
+
+-- On-demand native dashboard; no background service.
+hl.bind("SUPER + D",hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-dashboard"))
+
+-- Finish the Alt+Tab cycle when either Alt key is released; pass release to apps.
+for _,key in ipairs({"Alt_L","Alt_R"}) do
+ hl.bind(key,hl.dsp.exec_cmd(os.getenv("HOME").."/.local/bin/macos-cycle-window --end"),{release=true,ignore_mods=true,non_consuming=true})
+end
+
+-- Restore the display immediately on lid open, including at the lock screen.
+hl.bind("switch:off:Lid Switch", hl.dsp.exec_cmd('hyprctl dispatch \'hl.dsp.dpms({ action = "enable" })\''), {locked=true})

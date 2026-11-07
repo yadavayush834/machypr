@@ -25,7 +25,7 @@ Layer.set_keyboard_mode(win,Layer.KeyboardMode.ON_DEMAND);Layer.set_exclusive_zo
 for edge in (Layer.Edge.TOP,Layer.Edge.BOTTOM,Layer.Edge.RIGHT,Layer.Edge.LEFT):Layer.set_anchor(win,edge,True)
 Layer.set_margin(win,Layer.Edge.TOP,30);Layer.set_margin(win,Layer.Edge.BOTTOM,8)
 canvas=Gtk.Fixed();win.add(canvas)
-theme=Gtk.IconTheme.new();theme.set_custom_theme('WhiteSur')
+theme=Gtk.IconTheme.new();theme.set_custom_theme('MacTahoe')
 items={};selected=None;drag=None;pending=None
 ITEM_W,ITEM_H=100,104
 

@@ -1,0 +1,8 @@
+[Unit]
+Description=Keep the application launcher ready in memory
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=%h/.local/bin/macos-launchpad --background
+Restart=on-failure
+RestartSec=2

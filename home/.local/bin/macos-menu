@@ -20,8 +20,9 @@ def key(mods,k):return lambda:shortcut(mods,k)
 appearance_module=runpy.run_path(str(home/'.local/bin/macos-appearance'))
 appearance_dark=appearance_module['current']()=='dark'
 status_module=runpy.run_path(str(home/'.local/bin/macos-status'))
+glass_module=runpy.run_path(local('macos-glass'))
 menus={
-'apple': [('About This Desktop',launch('notify-send','Desktop','WhiteSur desktop • macOS styling on Hyprland')),None,('System Settings…',lambda:show_control()),('Appearance…',launch(local('macos-menu'),'appearance')),('Screenshot…',launch(local('macos-menu'),'screenshot')),('App Store…',launch('brave','https://flathub.org')),None,('Sleep',launch('systemctl','suspend')),('Restart…',launch(local('arch-power'))),('Shut Down…',launch(local('arch-power'))),None,('Lock Screen',launch('hyprlock'))],
+'apple': [('About This Desktop',launch('notify-send','Desktop','WhiteSur desktop • macOS styling on Hyprland')),None,('System Settings…',lambda:show_control()),('Appearance…',launch(local('macos-menu'),'appearance')),('Liquid Glass…',launch(local('macos-menu'),'glass')),('Screenshot…',launch(local('macos-menu'),'screenshot')),('App Store…',launch('brave','https://flathub.org')),None,('Sleep',launch('systemctl','suspend')),('Restart…',launch(local('arch-power'))),('Shut Down…',launch(local('arch-power'))),None,('Lock Screen',launch('hyprlock'))],
 'app':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Hide Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.move({workspace="special:minimized",follow=false,window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL)),None,('Quit',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
 'file':[('New Window',launch('kitty') if app=='kitty' else key('CTRL','n')),('Open…',key('CTRL','o')),None,('Home',launch('dolphin',str(home))),('Downloads',launch('dolphin',str(home/'Downloads'))),None,('Close Window',lambda:subprocess.run(['hyprctl','dispatch','hl.dsp.window.close({window='+json.dumps('address:'+address)+'})'],stdout=subprocess.DEVNULL))],
 'edit':[('Undo',key('CTRL','z')),('Redo',key('CTRL SHIFT','z')),None,('Cut',key('CTRL','x')),('Copy',key('CTRL SHIFT' if app=='kitty' else 'CTRL','c')),('Paste',key('CTRL SHIFT' if app=='kitty' else 'CTRL','v')),('Select All',key('CTRL','a'))],
@@ -30,6 +31,7 @@ menus={
 'help':[('Keyboard Shortcuts',launch(local('macos-menu'),'shortcuts')),('Desktop Appearance',launch(local('macos-menu'),'appearance'))],
 'control':[('Sound',launch('pavucontrol')),('Wi-Fi',launch(local('arch-wifi'))),('Bluetooth',launch(local('arch-bluetooth'))),None,('Change Wallpaper…',launch(local('arch-wallpaper'))),('Appearance…',launch(local('macos-menu'),'appearance')),('Lock Screen',launch('hyprlock'))],
 'shortcuts':[(label,lambda:None) for label in ['⇧⌘3 — Capture screen','⇧⌘4 — Capture area','⇧⌘5 — Screenshot options','⌃⇧⌘3/4 — Copy screenshot only','⌘ Return — Terminal','⌘ E — Finder','⌘ Space — Spotlight','⌘ B — Browser','⌘ C — Code','⌘ W — Close window','⌘ Alt D — Toggle dock','⌘ Tab — Switch windows','Alt Tab — Next window','Alt Shift Tab — Previous window','⌘ L — Lock screen','⌘ + drag — Move window','⌘ + right drag — Resize window','⌘ 1–9 — Switch desktop']],
+'glass':[(('✓ ' if glass_module['enabled']()==value else '')+label,launch(local('macos-glass'),'on' if value else 'off')) for value,label in [(True,'Yes — Liquid Glass'),(False,'No — Standard Appearance')]],
 'appearance':[(('✓ ' if appearance_module['preference']()['mode']==mode else '')+label,launch(local('macos-appearance'),mode)) for mode,label in [('light','Light'),('dark','Dark'),('auto','Auto (Light 7 AM–7 PM)')]],
 'network':[(status_module['network_state']()[1],lambda:None),None,('Wi-Fi Settings…',launch(local('arch-wifi'))),('Bluetooth Settings…',launch(local('arch-bluetooth')))],
 'screenshot':[('Capture Entire Screen',launch(local('macos-screenshot'),'screen')),('Capture Selected Area',launch(local('macos-screenshot'),'region')),('Capture Active Window',launch(local('macos-screenshot'),'window')),None,('Capture Screen in 5 Seconds',launch(local('macos-screenshot'),'screen','--delay','5')),('Open Screenshots Folder',launch('dolphin',str(home/'Pictures/Screenshots')))],
@@ -56,6 +58,8 @@ if kind=='window':
  menus[kind]=[(w['title'][:60],lambda w=w:focus(w)) for w in clients]
 battery = status_module['battery_state']() if kind == 'battery' else None
 win=Gtk.Window();win.set_name('macos-menu');win.set_decorated(False);win.set_resizable(False)
+visual=win.get_screen().get_rgba_visual()
+if visual:win.set_visual(visual)
 GtkLayerShell.init_for_window(win);GtkLayerShell.set_namespace(win,'macos-menu');GtkLayerShell.set_layer(win,GtkLayerShell.Layer.OVERLAY)
 GtkLayerShell.set_keyboard_mode(win,GtkLayerShell.KeyboardMode.EXCLUSIVE)
 GtkLayerShell.set_exclusive_zone(win,-1)
@@ -76,7 +80,8 @@ box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=0);box.set_border_width
 if kind in ('apple','app','file','edit','view','go','window','help'):
  win.get_style_context().add_class('application-menu')
 if kind == 'control':
- panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);panel.set_border_width(8);panel.set_size_request(270,-1)
+ panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12);panel.set_border_width(12);panel.set_size_request(300,-1)
+ heading=Gtk.Label(label='Control Center');heading.set_xalign(0);heading.get_style_context().add_class('panel-title');panel.pack_start(heading,False,False,2)
  grid=Gtk.Grid();grid.set_row_spacing(7);grid.set_column_spacing(7)
  for index,(title,icon,command) in enumerate([('Wi-Fi','network-wireless-symbolic',[local('macos-menu'),'network']),('Bluetooth','bluetooth-symbolic',[local('arch-bluetooth')]),('Sound','audio-volume-high-symbolic',['pavucontrol']),('Lock Screen','system-lock-screen-symbolic',['hyprlock'])]):
   tile=Gtk.Button();tile.get_style_context().add_class('control-tile')
@@ -87,9 +92,15 @@ if kind == 'control':
  appearance_button=Gtk.Button(label='Appearance…  '+appearance_module['preference']()['mode'].title())
  appearance_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'appearance'])))
  panel.pack_start(appearance_button,False,False,0)
+ glass_button=Gtk.Button(label='Liquid Glass…  '+('On' if glass_module['enabled']() else 'Off'))
+ glass_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'glass'])))
+ panel.pack_start(glass_button,False,False,0)
  sound_button=Gtk.Button(label='Sound Effects…')
  sound_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-menu'),'sound-effects'])))
  panel.pack_start(sound_button,False,False,0)
+ dashboard_button=Gtk.Button(label='Open Dashboard')
+ dashboard_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-dashboard')])))
+ panel.pack_start(dashboard_button,False,False,0)
  for title,initial,callback in [('Display',70,lambda value:run(['brightnessctl','set',str(round(value))+'%'])),('Sound',50,lambda value:run(['wpctl','set-volume','@DEFAULT_AUDIO_SINK@',str(round(value))+'%']))]:
   try:
    if title=='Sound':
@@ -111,6 +122,9 @@ if kind == 'calendar':
  today=Gtk.Label();today.set_markup('<b>'+datetime.datetime.now().strftime('%A, %B %-d')+'</b>');today.set_xalign(0);content.pack_start(today,False,False,0)
  calendar=Gtk.Calendar();calendar.set_display_options(Gtk.CalendarDisplayOptions.SHOW_HEADING|Gtk.CalendarDisplayOptions.SHOW_DAY_NAMES);calendar.mark_day(datetime.datetime.now().day);content.pack_start(calendar,False,False,0)
  box.pack_start(content,False,False,0)
+ dashboard_button=Gtk.Button(label='Open Dashboard…')
+ dashboard_button.connect('clicked',lambda _:(Gtk.main_quit(),run([local('macos-dashboard')])))
+ box.pack_start(dashboard_button,False,False,0)
 if kind == 'battery':
  content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=6);content.set_border_width(8)
  header=Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,spacing=30)
@@ -268,6 +282,8 @@ def quit_menu(*_):
 # Outside clicks and Escape dismiss explicitly; transient layer focus changes
 # during mapping must not close the menu before it can be used.
 win.connect('destroy',quit_menu)
+import runpy as _glass_runpy
+_glass_provider=_glass_runpy.run_path(str(Path.home()/'.local/bin/macos-glass'))['attach']()
 dismiss.show_all();win.show_all();win.set_focus(None);Gtk.main()
 # Unmap both overlay surfaces before an action takes keyboard/window focus.
 # Otherwise their later teardown can restore focus to the previous window.

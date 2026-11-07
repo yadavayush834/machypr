@@ -10,7 +10,7 @@ import tempfile
 import tomllib
 
 root = Path(__file__).resolve().parent.parent
-for source in list((root/'scripts').glob('*.py')) + list((root/'home/.local/bin').glob('macos-*')):
+for source in list((root/'scripts').glob('*.py')) + list((root/'home/.local/bin').glob('macos-*')) + list((root/'home/.local/bin').glob('mac-os-*')) + list((root/'home/.local/lib').glob('*.py')):
     if source.suffix==".py" or "python" in source.read_text().splitlines()[0]:
         ast.parse(source.read_text())
 for source in (root/'home').rglob('*.json*'):
@@ -63,7 +63,8 @@ with tempfile.TemporaryDirectory(prefix='arch-rice-test-') as temporary:
     bar = json.loads((home/'.config/waybar/config.jsonc').read_text())
     assert 'hyprland/workspaces' not in bar['modules-left']
     assert 'custom/apple' in bar['modules-left']
-    assert (home/'.config/gtk-4.0/gtk.css').stat().st_size > 100000
+    assert f'@import url("{home}/.local/share/themes/MacTahoe-Dark/gtk-4.0/gtk.css")' in (home/'.config/gtk-4.0/gtk.css').read_text()
+    assert (home/'.local/lib/macos_launcher_session.py').exists()
     assert (home/'.local/bin/macos-dock').stat().st_mode & 0o111
     for source in (root/'home').rglob('*'):
         if source.is_file() and source.suffix not in ('.png', '.ttf', '.pyc'):

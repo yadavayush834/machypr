@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Bruno
+Exec=/usr/bin/flatpak run --branch=stable --arch=x86_64 --command=bruno --file-forwarding com.usebruno.Bruno --ozone-platform=wayland @@u %U @@
+Terminal=false
+Type=Application
+Icon=com.usebruno.Bruno
+StartupWMClass=Bruno
+MimeType=x-scheme-handler/bruno;
+Categories=Development;
+X-Flatpak=com.usebruno.Bruno

@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import sys
 from pathlib import Path
+import runpy
+session = runpy.run_path(str(Path.home()/".local/lib/macos_launcher_session.py"))["Session"]()
 import gi
 gi.require_version('Gtk','3.0')
 gi.require_version('GtkLayerShell','0.1')
@@ -19,27 +21,51 @@ outer=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=18);outer.set_border_
 entry=Gtk.SearchEntry();entry.set_placeholder_text('Search applications');entry.set_size_request(370,42);entry.set_halign(Gtk.Align.CENTER);outer.pack_start(entry,False,False,0)
 scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC);scroll.set_vexpand(True);outer.pack_start(scroll,True,True,0)
 flow=Gtk.FlowBox();flow.set_valign(Gtk.Align.START);flow.set_selection_mode(Gtk.SelectionMode.NONE);flow.set_min_children_per_line(4);flow.set_max_children_per_line(7);flow.set_row_spacing(13);flow.set_column_spacing(9);flow.set_homogeneous(True);scroll.add(flow)
-theme=Gtk.IconTheme.get_default();apps={}
-for app in Gio.AppInfo.get_all():
- if app.should_show():
-  ident=app.get_id() or app.get_executable()
-  if ident: apps.setdefault(ident,app)
-items=sorted(apps.values(),key=lambda a:a.get_display_name().casefold())
 buttons=[]
+apps_dirty=False
+
+def dismiss(*_):
+ GtkLayerShell.set_keyboard_mode(window,GtkLayerShell.KeyboardMode.NONE)
+ window.hide()
+ return True
+
+def show():
+ if apps_dirty: rebuild()
+ entry.set_text('')
+ update_appearance()
+ GtkLayerShell.set_keyboard_mode(window,GtkLayerShell.KeyboardMode.EXCLUSIVE)
+ window.show_all();search();entry.grab_focus()
+
 def launch(app):
  try:
-  app.launch([],None)
-  Gtk.main_quit()
+  dismiss()
+  Gdk.Display.get_default().sync()
+  app.launch([],Gdk.Display.get_default().get_app_launch_context())
  except GLib.Error as error:
+  show()
   entry.set_text('');entry.set_placeholder_text('Unable to open '+app.get_display_name());entry.grab_focus()
-for app in items:
- button=Gtk.Button();button.set_name('app');button.set_tooltip_text(app.get_display_name());button.get_accessible().set_name(app.get_display_name())
- content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=7);content.set_halign(Gtk.Align.CENTER);button.add(content)
- icon=app.get_icon()
- image=Gtk.Image.new_from_gicon(icon,Gtk.IconSize.DIALOG) if icon else Gtk.Image.new_from_icon_name('application-x-executable',Gtk.IconSize.DIALOG)
- image.set_pixel_size(55);content.pack_start(image,False,False,0)
- label=Gtk.Label(label=app.get_display_name());label.set_ellipsize(3);label.set_max_width_chars(16);label.set_justify(Gtk.Justification.CENTER);content.pack_start(label,False,False,0)
- button.connect('clicked',lambda _,app=app:launch(app));flow.add(button);buttons.append((app,button.get_parent()))
+def rebuild(*_):
+ global apps_dirty,buttons,items
+ items=sorted((a for a in Gio.AppInfo.get_all() if a.should_show()),key=lambda a:a.get_display_name().casefold())
+ for child in flow.get_children(): flow.remove(child)
+ buttons=[]
+ for app in items:
+  button=Gtk.Button();button.set_name('app');button.set_tooltip_text(app.get_display_name());button.get_accessible().set_name(app.get_display_name())
+  content=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=7);content.set_halign(Gtk.Align.CENTER);button.add(content)
+  icon=app.get_icon()
+  image=Gtk.Image.new_from_gicon(icon,Gtk.IconSize.DIALOG) if icon else Gtk.Image.new_from_icon_name('application-x-executable',Gtk.IconSize.DIALOG)
+  image.set_pixel_size(55);content.pack_start(image,False,False,0)
+  label=Gtk.Label(label=app.get_display_name());label.set_ellipsize(3);label.set_max_width_chars(16);label.set_justify(Gtk.Justification.CENTER);content.pack_start(label,False,False,0)
+  button.connect('clicked',lambda _,app=app:launch(app));flow.add(button);buttons.append((app,button.get_parent()))
+ apps_dirty=False
+
+def mark_dirty(*_):
+ global apps_dirty
+ apps_dirty=True
+
+app_monitor=Gio.AppInfoMonitor.get()
+app_monitor.connect('changed',mark_dirty)
+rebuild()
 def search(*_):
  text=entry.get_text().casefold().strip()
  for app,child in buttons:
@@ -48,14 +74,21 @@ def activate(*_):
  text=entry.get_text().casefold().strip()
  visible=[app for app,_ in buttons if not text or text in (app.get_display_name()+' '+(app.get_description() or '')).casefold()]
  if visible:launch(visible[0])
-entry.connect('search-changed',search);entry.connect('activate',activate)
-window.connect('key-press-event',lambda _,e:(Gtk.main_quit() or True) if e.keyval==Gdk.KEY_Escape else False)
+entry.connect('changed',search);entry.connect('activate',activate)
+window.connect('key-press-event',lambda _,e:dismiss() if e.keyval==Gdk.KEY_Escape else False)
 window.connect('destroy',Gtk.main_quit)
 css=Gtk.CssProvider();css.load_from_data(b'''window#launchpad {background:rgba(25,27,34,0.96);border:1px solid rgba(255,255,255,0.20);border-radius:20px;color:#f5f5f7;} searchentry {background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.16);border-radius:11px;padding:5px 12px;} button#app {background:transparent;border:0;box-shadow:none;border-radius:13px;color:#f5f5f7;padding:10px 6px;min-height:86px;} button#app:hover,button#app:focus {background:rgba(255,255,255,0.14);} button#app label {color:#f5f5f7;font-family:Inter,sans-serif;font-size:12px;}''')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-import runpy
-if runpy.run_path(str(Path.home()/'.local/bin/macos-appearance'))['current']()=='light':
- light=Gtk.CssProvider();light.load_from_data(b'window#launchpad {background:rgba(240,240,245,0.96);color:#202024;} searchentry {background:rgba(255,255,255,0.7);color:#202024;border-color:#bdbdc4;} button#app label {color:#202024;} button#app:hover {background:rgba(0,0,0,0.08);}')
- Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),light,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
+appearance=runpy.run_path(str(Path.home()/'.local/bin/macos-appearance'))
+light=Gtk.CssProvider()
+Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),light,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+1)
+def update_appearance():
+ light.load_from_data(b'window#launchpad {background:rgba(240,240,245,0.96);color:#202024;} searchentry {background:rgba(255,255,255,0.7);color:#202024;border-color:#bdbdc4;} button#app label {color:#202024;} button#app:hover {background:rgba(0,0,0,0.08);}' if appearance['current']()=='light' else b'')
 
-window.show_all();entry.grab_focus();Gtk.main()
+import runpy as _glass_runpy
+_glass_provider=_glass_runpy.run_path(str(Path.home()/'.local/bin/macos-glass'))['attach']()
+session.attach(GLib,show,dismiss)
+if session.background: dismiss()
+else: show()
+try: Gtk.main()
+finally: session.close()

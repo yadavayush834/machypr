@@ -1,0 +1,8 @@
+[Unit]
+Description=Check Hyprland responsiveness and configuration
+
+[Service]
+Type=oneshot
+ExecStart=@HOME@/.local/bin/mac-os-health
+TimeoutStartSec=30
+Nice=10

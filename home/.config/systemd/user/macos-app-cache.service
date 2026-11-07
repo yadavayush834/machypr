@@ -1,0 +1,12 @@
+[Unit]
+Description=Warm commonly used app files after sign-in
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/macos-app-cache
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=10
+IOWeight=10
+MemoryMax=896M
+TimeoutStartSec=90

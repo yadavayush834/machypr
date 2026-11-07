@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 export PATH="$HOME/.local/bin:$PATH"
+
+# Publish the compositor environment before D-Bus activates desktop services.
+# This also allows the Hyprland (UWSM) login session to finish starting.
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+ export XDG_CURRENT_DESKTOP=Hyprland
+ export XDG_SESSION_TYPE=wayland
+ dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE HYPRLAND_INSTANCE_SIGNATURE XCURSOR_THEME XCURSOR_SIZE
+ if command -v uwsm >/dev/null; then
+  case "$(systemctl --user show wayland-wm@hyprland.desktop.service -p ActiveState --value 2>/dev/null)" in
+   active|activating) uwsm finalize HYPRLAND_INSTANCE_SIGNATURE XCURSOR_THEME XCURSOR_SIZE ;;
+  esac
+ fi
+ systemctl --user reset-failed xdg-desktop-portal-gtk.service 2>/dev/null || true
+fi
 start() { command -v "$1" >/dev/null && { pgrep -u "$UID" -x "$1" >/dev/null || "$@" >/dev/null 2>&1 & }; }
 if ! pgrep -u "$UID" -f "^/usr/bin/python .*macos-menubar$" >/dev/null; then
  /usr/bin/python "$HOME/.local/bin/macos-menubar" >/dev/null 2>&1 &
 fi
+if ! pgrep -u "$UID" -f "^/usr/bin/python @HOME@/.local/bin/macos-dock$" >/dev/null; then
+ /usr/bin/python "$HOME/.local/bin/macos-dock" >/dev/null 2>&1 &
+fi
+
 start hyprpaper
 start dunst
 start hypridle
@@ -18,12 +36,15 @@ if ! pgrep -u "$UID" -f '^/usr/lib/polkit-kde-authentication-agent-1' >/dev/null
  /usr/lib/polkit-kde-authentication-agent-1 >/dev/null 2>&1 &
 fi
 
-if ! pgrep -u "$UID" -f "^/usr/bin/python @HOME@/.local/bin/macos-dock$" >/dev/null; then
- /usr/bin/python "$HOME/.local/bin/macos-dock" >/dev/null 2>&1 &
-fi
 
 # Keep desktop files below application windows on every workspace.
-"$HOME/.local/bin/macos-desktop-setup"
+"$HOME/.local/bin/macos-desktop-setup" &
 if ! pgrep -u "$UID" -f "^/usr/bin/python .*macos-desktop-icons$" >/dev/null; then
  /usr/bin/python "$HOME/.local/bin/macos-desktop-icons" >/dev/null 2>&1 &
 fi
+
+# Check updates after the desktop is ready, away from the startup path.
+systemctl --user restart mac-os-updates.timer >/dev/null 2>&1 &
+
+# Prepare the launcher and app file cache outside the login critical path.
+systemctl --user start macos-launchpad.service macos-app-cache.timer >/dev/null 2>&1 &

@@ -20,7 +20,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert module['configure'](home) is True
     data=json.loads(prefs.read_text())
     assert data['extensions']['theme']['system_theme']==1
-    assert data['browser']['custom_chrome_frame'] is True
+    assert data['browser']['custom_chrome_frame'] is False
     assert data['profile']==original['profile'] and data['browser']['other_setting'] is True
     backup=next((home/'.local/state/macos-desktop/browser-backups').glob('*.json'))
     assert backup.read_bytes()==before

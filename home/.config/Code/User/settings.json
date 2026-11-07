@@ -1,5 +1,5 @@
 {
-  "workbench.colorTheme": "Default Dark Modern",
+  "workbench.colorTheme": "Dark Modern",
   "editor.fontFamily": "'JetBrainsMono Nerd Font', monospace",
   "editor.fontSize": 14,
   "editor.formatOnSave": true,
@@ -10,6 +10,16 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
+  "workbench.colorCustomizations": {
+    "focusBorder": "#0a84ff",
+    "activityBarBadge.background": "#0a84ff",
+    "activityBar.activeBorder": "#0a84ff",
+    "statusBar.background": "#303034",
+    "statusBar.foreground": "#f2f2f7",
+    "titleBar.activeBackground": "#1e1e1e",
+    "titleBar.activeForeground": "#f2f2f7"
+  },
   "window.titleBarStyle": "native",
-  "window.menuBarVisibility": "toggle"
+  "window.menuBarVisibility": "toggle",
+  "workbench.editor.dragToOpenWindow": true
 }

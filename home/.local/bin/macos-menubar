@@ -120,6 +120,8 @@ class AppleSymbol(Gtk.DrawingArea):
         return False
 
 win=Gtk.Window();win.set_name('macos-menubar');win.set_decorated(False);win.set_resizable(False)
+visual=win.get_screen().get_rgba_visual()
+if visual:win.set_visual(visual)
 Layer.init_for_window(win);Layer.set_namespace(win,'macos-menubar');Layer.set_layer(win,Layer.Layer.TOP)
 for edge in [Layer.Edge.TOP,Layer.Edge.LEFT,Layer.Edge.RIGHT]:Layer.set_anchor(win,edge,True)
 Layer.set_exclusive_zone(win,24)
@@ -207,7 +209,7 @@ def animate_battery():
         symbols[0].queue_draw()
     return True
 
-GLib.timeout_add(50,animate_battery)
+GLib.timeout_add(125,animate_battery)
 
 def sample_status():
     global battery_snapshot,network_snapshot
@@ -219,4 +221,6 @@ def shutdown(*_):
 
 GLib.timeout_add(250,update_active);GLib.timeout_add_seconds(5,sample_status)
 GLib.timeout_add_seconds(1,update);win.show_all();update();update_active()
+import runpy as _glass_runpy
+_glass_provider=_glass_runpy.run_path(str(Path.home()/'.local/bin/macos-glass'))['attach']()
 win.connect('destroy',shutdown);Gtk.main()

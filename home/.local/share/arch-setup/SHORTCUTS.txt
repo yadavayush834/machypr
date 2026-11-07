@@ -19,6 +19,8 @@ Super+Alt+N: Wi-Fi
 Super+Alt+D: Show or hide dock
 Super+1-9: Switch desktop
 Super+Shift+1-9: Move window to desktop
-Super+left drag: Move window
-Super+right drag: Resize window
+Super+left drag: Move a window from ANYWHERE inside it (hold the logo key)
+Super+right drag: Resize window deliberately
+Drag the title bar: Move window normally; borders no longer resize
+Green title-bar button: Maximize/restore
 Super+Shift+Space: Toggle floating

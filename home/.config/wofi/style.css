@@ -10,3 +10,49 @@ window { background-color: rgba(30,30,30,0.98); border: 1px solid #666666; borde
 
 #input { caret-color: #ffffff; }
 #input placeholder { color: #b8b8be; }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* appearance override */
+window {background:#1e1e1e;border-color:#636369;}
+#input {background:#303034;color:#f2f2f7;}
+#text {color:#f2f2f7;}
+#entry:selected {background:#0969da;}
+#entry:selected #text {color:#ffffff;}

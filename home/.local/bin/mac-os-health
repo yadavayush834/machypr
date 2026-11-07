@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Record desktop health without restarting a live compositor or its apps."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import time
+
+state = Path.home() / '.local/state/mac-os'
+state.mkdir(parents=True, exist_ok=True)
+def command(args):
+    try:
+        p = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=4)
+        return p.returncode, p.stdout.strip()
+    except (OSError, subprocess.TimeoutExpired):
+        return 1, 'Desktop control did not respond within 4 seconds.'
+
+code, output = command(['/usr/bin/hyprctl', '-j', 'instances'])
+try:
+    instances = json.loads(output) if code == 0 else []
+except ValueError:
+    instances = []
+checks = []
+for instance in instances:
+    signature = instance.get('instance') or instance.get('instanceSignature')
+    if not signature:
+        continue
+    code, errors = command(['/usr/bin/hyprctl', '-i', signature, 'configerrors'])
+    checks.append({'instance': signature, 'healthy': code == 0 and not errors, 'errors': errors})
+report = {'checked_at': time.time(), 'sessions': checks,
+          'state': 'healthy' if checks and all(x['healthy'] for x in checks) else 'no-session' if not instances else 'attention'}
+target = state / 'health.json'
+try:
+    previous = json.loads(target.read_text())
+except (OSError, ValueError):
+    previous = {}
+target.write_text(json.dumps(report, indent=2))
+if report['state'] == 'attention' and previous.get('state') != 'attention':
+    command(['/usr/bin/notify-send', 'Desktop needs attention',
+             'A Hyprland configuration or responsiveness issue was detected. Save your work. The mac-os Recovery session is available at sign-in.'])
+if report['state'] != previous.get('state'):
+    print('mac-os health: ' + report['state'], flush=True)

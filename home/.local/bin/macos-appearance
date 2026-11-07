@@ -37,7 +37,7 @@ def apply(mode, home=None, session=True):
     home = Path.home() if home is None else home
     effective = resolve(mode)
     dark = effective == 'dark'
-    theme = 'WhiteSur-Dark' if dark else 'WhiteSur-Light'
+    theme = 'MacTahoe-Dark' if dark else 'MacTahoe-Light'
     bg, surface, fg, border = ('#1e1e1e','#303034','#f2f2f7','#636369') if dark else ('#ffffff','#ededf1','#202024','#bdbdc4')
     def write(path, text):
         path.parent.mkdir(parents=True,exist_ok=True)
@@ -47,7 +47,7 @@ def apply(mode, home=None, session=True):
     for version in ('3','4'):
         p=home/f'.config/gtk-{version}.0/settings.ini'
         text=p.read_text() if p.exists() else '[Settings]\n'
-        for key,value in [('gtk-theme-name',theme),('gtk-application-prefer-dark-theme',str(int(dark)))]:
+        for key,value in [('gtk-theme-name',theme),('gtk-icon-theme-name','MacTahoe'),('gtk-application-prefer-dark-theme',str(int(dark)))]:
             if re.search(r'^'+key+'=',text,re.M):text=re.sub(r'^'+key+r'=.*$',key+'='+value,text,flags=re.M)
             else:text+=key+'='+value+'\n'
         write(p,text)
@@ -101,6 +101,8 @@ def apply(mode, home=None, session=True):
                     'ForegroundPositive':foreground if selected else palette[2]}
             for key,value in values.items():settings[section][key]=rgb(value)
         if not settings.has_section('General'):settings.add_section('General')
+        if not settings.has_section('Icons'):settings.add_section('Icons')
+        settings['Icons']['Theme']='MacTahoe'
         settings['General']['ColorScheme']='WhiteSurDark' if dark else 'WhiteSurLight'
         output=io.StringIO();settings.write(output,space_around_delimiters=False)
         write(kde,output.getvalue())
@@ -118,6 +120,7 @@ def apply(mode, home=None, session=True):
             try:subprocess.run(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=4,check=False)
             except (OSError,subprocess.SubprocessError):pass
         command('gsettings','set','org.gnome.desktop.interface','gtk-theme',theme)
+        command('gsettings','set','org.gnome.desktop.interface','icon-theme','MacTahoe')
         command('gsettings','set','org.gnome.desktop.interface','color-scheme','prefer-dark' if dark else 'prefer-light')
         command('pkill','-USR1','-u',str(__import__('os').getuid()),'-x','kitty')
         command('dunstctl','reload')

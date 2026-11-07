@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=mac-os (Recovery)
+Comment=Minimal Hyprland desktop without third-party plugins
+Exec=@HOME@/.local/bin/mac-os-session --recovery
+TryExec=@HOME@/.local/bin/mac-os-session
+Type=Application
+DesktopNames=Hyprland

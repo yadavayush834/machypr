@@ -1,0 +1,6 @@
+[Unit]
+Description=Show pending updates shortly after desktop sign-in
+
+[Timer]
+OnActiveSec=90s
+AccuracySec=5s

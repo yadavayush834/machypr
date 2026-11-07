@@ -18,12 +18,12 @@ def configure(home=None):
         except (OSError,ValueError):continue
         theme=data.setdefault('extensions',{}).setdefault('theme',{})
         browser=data.setdefault('browser',{})
-        if theme.get('system_theme')==1 and browser.get('custom_chrome_frame') is True:continue
+        if theme.get('system_theme')==1 and browser.get('custom_chrome_frame') is False:continue
         backup=home/'.local/state/macos-desktop/browser-backups'/(datetime.datetime.now().strftime('%Y%m%d-%H%M%S-%f')+'-'+folder.name+'.json')
         backup.parent.mkdir(parents=True,exist_ok=True)
         if prefs.exists():shutil.copy2(prefs,backup)
         theme['system_theme']=1
-        browser['custom_chrome_frame']=True
+        browser['custom_chrome_frame']=False
         prefs.parent.mkdir(parents=True,exist_ok=True)
         temporary=prefs.with_name('.Preferences.macos-tmp');temporary.write_text(json.dumps(data,separators=(',',':')));temporary.chmod(0o600);temporary.replace(prefs)
     return True

@@ -1,0 +1,12 @@
+[Unit]
+Description=Check pending updates and notify on the desktop
+StartLimitIntervalSec=30min
+StartLimitBurst=2
+
+[Service]
+Type=oneshot
+ExecStart=@HOME@/.local/bin/mac-os-updates --notify
+TimeoutStartSec=3min
+Restart=on-failure
+RestartSec=5min
+Nice=15

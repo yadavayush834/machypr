@@ -4,7 +4,7 @@
 
 ### A macOS-inspired desktop for Arch Linux and Hyprland.
 
-WhiteSur styling. A native menu bar. A dock that follows your desktop.
+MacTahoe styling with WhiteSur fallbacks. A native menu bar. A dock that follows your desktop.
 
 [Install](#install) · [Gallery](#gallery) · [Shortcuts](#shortcuts) · [Documentation](docs/REFERENCE.md) · [Credits](docs/THIRD-PARTY.md)
 
@@ -69,14 +69,15 @@ The bootstrap downloads this repository into a temporary directory and runs its 
 | **Window controls** | Red closes, yellow minimizes, green maximizes; centered titles and rounded corners |
 | **Appearance** | Light, Dark or scheduled Auto, shared across desktop surfaces and supported app palettes |
 | **Control Center** | Brightness and sound sliders, Wi-Fi, Bluetooth, screen lock, appearance and sound-effect controls |
-| **Launchpad** | Searchable grid of installed applications |
+| **Launchpad** | Searchable installed applications, kept ready in memory for faster repeat opens |
+| **Dashboard** | On-demand local notes and system information with `Super + D` |
 | **Screenshots** | `Super + S` selects an area and copies it to the clipboard without saving a file |
 | **Window and tab switching** | Clickable window-name menu; `Alt + Tab` cycles windows on the current desktop |
 | **Sound effects** | Notification, volume-key and screenshot feedback, with preview and enable/disable controls |
 
 ## Gallery
 
-These are captures of the running desktop, using a clean demonstration terminal. The dock shows apps from that desktop; it is not a fixed row of launchers.
+These are captures of the running desktop, using a clean demonstration terminal. The dock combines pinned everyday applications with apps from the current desktop.
 
 ### Light and dark, throughout the desktop
 
@@ -104,7 +105,7 @@ Choose **Apple menu → Appearance** or **Control Center → Appearance**. Auto 
 
 <p align="center"><img src="assets/machypr-dock.png" alt="Current-desktop dock showing Launchpad, a running terminal and Trash" width="420"></p>
 
-Apps appear when opened and disappear when closed or moved to another desktop. Clicking an app raises a local window; repeated clicks cycle its local windows. Minimized windows stay available through their original desktop’s dock. Move to the bottom edge or press `Super + Alt + D` to reveal it.
+Finder, Code, Brave and Terminal remain pinned; installed Bruno, DBeaver, Meld and Gitg join automatically. Other apps appear when opened and disappear when closed or moved to another desktop. Clicking an app raises a local window; repeated clicks cycle its local windows. Minimized windows stay available through their original desktop’s dock. Move to the bottom edge or press `Super + Alt + D` to reveal it.
 
 ### Launchpad
 
@@ -207,3 +208,29 @@ Desktop icons can be dragged freely across the wallpaper. Coordinates are saved
 in `~/.local/state/macos-desktop/icon-positions.json` and restored on login.
 Charging below 100% uses a green pulsing battery; full, discharging and
 plugged-but-not-charging batteries use the static normal indicator.
+
+Brave uses the same Hyprland traffic-light title bar as other windows. Restart
+Brave after applying the configuration so its built-in window buttons are hidden.
+
+### Optional Liquid Glass appearance
+
+Open **Apple menu → Liquid Glass…** or **Control Center → Liquid Glass…**,
+then select **Yes** or **No**. The preference persists across logins and is
+independent of Light/Dark appearance. Yes enables blurred translucent shell
+surfaces, highlighted edges, pointer-responsive dock lighting, translucent
+shared title bars and eased window entrances. No restores standard styling.
+Application content remains opaque.
+
+This is a native GTK/Cairo/Hyprland approximation inspired by
+[iyinchao/liquid-glass-studio](https://github.com/iyinchao/liquid-glass-studio),
+not Apple's compositor or the reference's WebGL/WebGPU renderer. It does not
+implement optical refraction, chromatic dispersion, merging glass shapes,
+or change third-party app interiors.
+
+## November 7 desktop update
+
+The current setup adds Tahoe themes and icons, a local Dashboard, developer app pins, smoother Alt+Tab window cycling, simpler title-bar dragging, a lighter lock screen, lid-open display activation and optional faster suspend. Launchpad stays ready in memory, search updates without a debounce delay, and the dock queries Hyprland directly. A low-priority user timer warms up to 768 MiB of common application files after sign-in; these pages are reclaimable when other programs need RAM.
+
+Measured on the development laptop: repeat Launchpad opens took about 70–75 ms, compared with 600–770 ms before. These are launcher visibility timings, not timings for every application. Actual application startup still depends on storage and the application.
+
+The standard installer applies portable user files. System-wide lid handling, faster sleep and guarded login sessions are optional: see [system setup and today's changes](docs/2026-11-07.md). Hardware-specific F11/F12 workarounds are examples and are not enabled for other users.

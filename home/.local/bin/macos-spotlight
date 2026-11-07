@@ -107,7 +107,7 @@ def key(_, event):
         return True
     return False
 
-entry.connect('search-changed', search)
+entry.connect('changed', search)
 results.connect('row-activated', activate)
 win.connect('key-press-event', key)
 win.connect('destroy', Gtk.main_quit)
@@ -143,6 +143,8 @@ dismiss.connect('button-press-event',lambda *_:(Gtk.main_quit(),True)[1])
 dismiss.show_all()
 win.show_all()
 entry.grab_focus()
+import runpy as _glass_runpy
+_glass_provider=_glass_runpy.run_path(str(Path.home()/'.local/bin/macos-glass'))['attach']()
 Gtk.main()
 Layer.set_keyboard_mode(win,Layer.KeyboardMode.NONE)
 win.disconnect_by_func(Gtk.main_quit)

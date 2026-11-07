@@ -1,0 +1,10 @@
+[Unit]
+Description=Check desktop health every two minutes
+
+[Timer]
+OnStartupSec=45
+OnUnitActiveSec=2min
+AccuracySec=15
+
+[Install]
+WantedBy=timers.target

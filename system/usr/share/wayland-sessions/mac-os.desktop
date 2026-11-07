@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=mac-os
+Comment=Mac-style Hyprland desktop with startup validation and recovery
+Exec=@HOME@/.local/bin/mac-os-session
+TryExec=@HOME@/.local/bin/mac-os-session
+Type=Application
+DesktopNames=Hyprland

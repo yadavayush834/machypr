@@ -15,4 +15,6 @@ python3 "$root/scripts/test-sounds.py"
 python3 "$root/scripts/test-screenshot.py"
 python3 "$root/scripts/test-brave-theme.py"
 python3 "$root/scripts/test-dock.py"
+python3 "$root/scripts/test-glass.py"
+python3 "$root/scripts/test-session.py"
 echo 'All checks passed.'

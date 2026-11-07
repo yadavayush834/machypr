@@ -1,0 +1,26 @@
+[
+  {
+    "repository": "https://github.com/TiHxdvt/liquid-glass-webgl.git",
+    "commit": "3791f02a4ceda6b6ea00b5f4ec17f7560c326978"
+  },
+  {
+    "repository": "https://github.com/wildfellhall/MacDashboard.git",
+    "commit": "0b9bf5e71776c41b09b71b3a403032620e2a0c25"
+  },
+  {
+    "repository": "https://github.com/vinceliuice/MacTahoe-gtk-theme.git",
+    "commit": "1e45e19f510edb8cde18fa84d6cd5319f60b086b"
+  },
+  {
+    "repository": "https://github.com/vinceliuice/MacTahoe-icon-theme.git",
+    "commit": "839848b9a8a38a92a6936e30c4abe35cc6f2546d"
+  },
+  {
+    "repository": "https://github.com/ybouane/liquidglass.git",
+    "commit": "59af227103795f06421a96e2c7d3dceb081decd2"
+  },
+  {
+    "repository": "https://github.com/david-x3d/kde-plasma-liquid-glass-theme.git",
+    "commit": "d90cf3e5467ff9cf75eb69d47663d86e8d8ea0fa"
+  }
+]

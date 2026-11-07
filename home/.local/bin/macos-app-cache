@@ -1,0 +1,79 @@
+#!/usr/bin/python3
+"""Warm a bounded set of app files in reclaimable Linux file cache."""
+import os
+from pathlib import Path
+import time
+
+MIB = 1024 * 1024
+home = Path.home()
+
+
+def available_memory():
+    for line in Path('/proc/meminfo').read_text().splitlines():
+        if line.startswith('MemAvailable:'):
+            return int(line.split()[1]) * 1024
+    return 0
+
+
+def candidates():
+    # Small common dependencies first, then editor and browser resources.
+    for name in ('libgtk-3.so.0', 'libgdk-3.so.0', 'libQt6Core.so.6',
+                 'libQt6Gui.so.6', 'libQt6Widgets.so.6', 'libKF6KIOCore.so.6'):
+        yield Path('/usr/lib') / name
+    for name in ('dolphin', 'kitty', 'python3', 'flatpak'):
+        yield Path('/usr/bin') / name
+    editor = home / '.local/opt/VSCode-linux-x64'
+    for name in ('resources/app/out/main.js', 'resources.pak', 'icudtl.dat',
+                 'v8_context_snapshot.bin', 'resources/app/node_modules.asar', 'code'):
+        yield editor / name
+    for root in (home / '.local/share/flatpak', Path('/var/lib/flatpak')):
+        browser = root / 'app/com.brave.Browser/current/active/files/brave'
+        for name in ('resources.pak', 'icudtl.dat', 'v8_context_snapshot.bin', 'brave'):
+            yield browser / name
+        apps = root / 'app'
+        for app, name in (
+            ('io.dbeaver.DBeaverCommunity', 'jre/lib/server/libjvm.so'),
+            ('org.gnome.gitg', 'bin/gitg'),
+            ('org.gnome.meld', 'bin/meld'),
+            ('com.usebruno.Bruno', 'extra/bruno/resources.pak'),
+            ('com.usebruno.Bruno', 'extra/bruno/icudtl.dat'),
+            ('com.usebruno.Bruno', 'extra/bruno/v8_context_snapshot.bin'),
+            ('com.usebruno.Bruno', 'extra/bruno/resources/app.asar'),
+            ('com.usebruno.Bruno', 'extra/bruno/bruno'),
+        ):
+            yield apps / app / 'current/active/files' / name
+
+
+def main():
+    started = time.monotonic()
+    total = count = 0
+    seen = set()
+    budget = 768 * MIB
+    for path in candidates():
+        if total >= budget or available_memory() < 3 * 1024 * MIB:
+            break
+        try:
+            resolved = path.resolve(strict=True)
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            with resolved.open('rb', buffering=0) as source:
+                limit = min(os.fstat(source.fileno()).st_size, 256 * MIB, budget-total)
+                read = 0
+                while read < limit:
+                    if time.monotonic()-started > 75 or available_memory() < 3 * 1024 * MIB:
+                        print(f'Paused cache warmup after {total/MIB:.0f} MiB.', flush=True)
+                        return
+                    chunk = source.read(min(MIB, limit-read))
+                    if not chunk:
+                        break
+                    read += len(chunk)
+                    total += len(chunk)
+                count += 1
+        except (OSError, ValueError):
+            continue
+    print(f'Warmed {total/MIB:.1f} MiB from {count} app files in {time.monotonic()-started:.2f}s; cache is reclaimable.', flush=True)
+
+
+if __name__ == '__main__':
+    main()

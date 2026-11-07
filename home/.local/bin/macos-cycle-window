@@ -1,39 +1,78 @@
 #!/usr/bin/env python3
-"""Cycle normal windows on the current desktop without changing workspaces."""
+"""Alt+Tab: cycle this workspace's windows and raise the selected window."""
+import fcntl
 import json
+import os
+from pathlib import Path
 import subprocess
 import sys
+import time
 
 
 def query(name):
-    return json.loads(subprocess.check_output(['hyprctl', name, '-j'], timeout=1))
+    return json.loads(subprocess.check_output(['hyprctl', name, '-j'], timeout=2))
+
+
+def choose_target(windows, workspace, active, backwards=False, state=None):
+    # Windows covered by a maximized client can report acceptsInput=false;
+    # keep them eligible so Alt+Tab can reveal them.
+    eligible = [w for w in windows if w.get('mapped', True) and not w.get('hidden', False)
+                and (w.get('workspace', {}).get('id') == workspace or w.get('pinned', False))
+                and not w.get('workspace', {}).get('name', '').startswith('special:')]
+    if not eligible:
+        return None, {}
+    addresses = {w['address'] for w in eligible}
+    state = state or {}
+    continuing = (state.get('workspace') == workspace and state.get('last') == active
+                  and set(state.get('order', [])) == addresses)
+    if continuing:
+        order = state['order']
+    else:
+        eligible.sort(key=lambda w: (0 if w['address'] == active else 1,
+                                   w.get('focusHistoryID', 999) if w.get('focusHistoryID', -1) >= 0 else 999,
+                                   w['address']))
+        order = [w['address'] for w in eligible]
+    if active in order:
+        target = order[(order.index(active) + (-1 if backwards else 1)) % len(order)]
+    else:
+        target = order[-1 if backwards else 0]
+    return target, {'workspace': workspace, 'order': order, 'last': target}
 
 
 def target_window(windows, workspace, active, backwards=False):
-    eligible = [window for window in windows
-                if window.get('mapped', True) and not window.get('hidden', False)
-                and (window.get('workspace', {}).get('id') == workspace or window.get('pinned', False))
-                and not window.get('workspace', {}).get('name', '').startswith('special:')]
-    # Stable compositor ordering lets repeated presses traverse every window.
-    if not eligible:
-        return None
-    addresses = sorted(window['address'] for window in eligible)
-    if active not in addresses:
-        return addresses[-1 if backwards else 0]
-    return addresses[(addresses.index(active) + (-1 if backwards else 1)) % len(addresses)]
+    return choose_target(windows, workspace, active, backwards)[0]
 
 
 def main():
-    try:
+    runtime = Path(os.environ.get('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}'))
+    state_path = runtime / 'macos-alt-tab.json'
+    with (runtime / 'macos-alt-tab.lock').open('w') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if '--end' in sys.argv:
+            state_path.unlink(missing_ok=True)
+            return
+        try:
+            state = json.loads(state_path.read_text())
+            if state.get('session') != os.environ.get('HYPRLAND_INSTANCE_SIGNATURE') or time.time() - state.get('updated', 0) > 15:
+                state = {}
+        except (OSError, ValueError):
+            state = {}
         workspace = query('activeworkspace')['id']
         active = query('activewindow').get('address')
-        target = target_window(query('clients'), workspace, active, '--previous' in sys.argv)
+        target, state = choose_target(query('clients'), workspace, active, '--previous' in sys.argv, state)
         if target is None or target == active:
             return
-        result = subprocess.run(['hyprctl', 'dispatch', 'hl.dsp.focus({window=' + json.dumps('address:' + target) + '})'], capture_output=True, text=True, timeout=1)
-    except (OSError, subprocess.SubprocessError, ValueError, KeyError):
-        return
+        # Floating windows need an explicit raise in addition to keyboard focus.
+        command = ('dispatch hl.dsp.focus({window=' + json.dumps('address:' + target) + '}); '
+                   'dispatch hl.dsp.window.bring_to_top()')
+        subprocess.run(['hyprctl', '--batch', command], capture_output=True, text=True, timeout=2, check=True)
+        if query('activewindow').get('address') == target:
+            state.update(session=os.environ.get('HYPRLAND_INSTANCE_SIGNATURE'), updated=time.time())
+            state_path.write_text(json.dumps(state))
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError):
+        pass

@@ -63,4 +63,6 @@ def refresh():
  return True
 css=Gtk.CssProvider();css.load_from_data(b'window#macos-osd {background:rgba(38,38,42,.80);border-radius:18px;border:1px solid rgba(255,255,255,.12);}')
 Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION+10)
+import runpy as _glass_runpy
+_glass_provider=_glass_runpy.run_path(str(Path.home()/'.local/bin/macos-glass'))['attach']()
 win.show_all();refresh();GLib.timeout_add(40,refresh);Gtk.main()
