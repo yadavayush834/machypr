@@ -3,6 +3,7 @@
 import ast
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import shutil
@@ -23,8 +24,7 @@ for group in (root/'packages').glob('*.txt'):
 for source in (root/'home').rglob('*'):
     if source.is_file() and source.suffix not in ('.png', '.ttf', '.pyc'):
         text = source.read_text()
-        assert '/home/ayush' not in text, source
-        assert 'Welcome back, Ayush' not in text, source
+        assert not re.search(r'/home/[A-Za-z0-9_-]+/', text), source
         assert 'aurora' not in text.lower(), source
 
 with tempfile.TemporaryDirectory(prefix='arch-rice-test-') as temporary:

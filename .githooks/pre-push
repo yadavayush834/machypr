@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(git rev-parse --show-toplevel)
+# Inspect the committed tree, so deleting a private working file cannot hide it.
+python3 "$root/scripts/check-publication.py" --revision HEAD

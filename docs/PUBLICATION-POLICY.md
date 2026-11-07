@@ -9,3 +9,5 @@ The local desktop configuration is separate from the repository's `home/` tree. 
 Runtime reports, backups, usage databases, authentication files and app profiles stay outside source control. Repository screenshots must show demonstration content without private chats or account information.
 
 Removing a file from the current branch does not erase earlier commits. Historical cleanup requires a separate coordinated history rewrite; normal publication checks leave existing Git history intact.
+
+Enable the local push guard in a clone with `git config core.hooksPath .githooks`. It scans the committed tree before pushing, so an uncommitted deletion cannot conceal a prohibited committed file. This repository's working clone has that hook enabled. GitHub CI runs the same guard as part of validation.

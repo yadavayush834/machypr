@@ -2,6 +2,8 @@
 """Reject personal machine configuration and common credentials before publication."""
 from pathlib import Path
 import re
+import io
+import tarfile
 import subprocess
 import sys
 
@@ -32,14 +34,17 @@ def violations(name,text=''):
 
 
 def main():
-    names=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=ROOT).decode().split('\0')
+    if len(sys.argv)==3 and sys.argv[1]=='--revision':
+        archive=subprocess.check_output(['git','archive',sys.argv[2]],cwd=ROOT)
+        with tarfile.open(fileobj=io.BytesIO(archive)) as files:
+            entries=[(entry.name,files.extractfile(entry).read()) for entry in files if entry.isfile()]
+    else:
+        names=subprocess.check_output(['git','ls-files','--cached','--others','--exclude-standard','-z'],cwd=ROOT).decode().split('\0')
+        entries=[(name,(ROOT/name).read_bytes()) for name in sorted(set(names)) if name and (ROOT/name).is_file()]
     problems=[];count=0
-    for name in sorted(set(names)):
-        path=ROOT/name
-        if not name or not path.is_file():continue
+    for name,raw in entries:
         count+=1
-        # Binary assets still get checked for forbidden file paths.
-        raw=path.read_bytes();text='' if b'\0' in raw else raw.decode('utf-8',errors='replace')
+        text='' if b'\0' in raw else raw.decode('utf-8',errors='replace')
         for reason in violations(name,text):problems.append(f'{name}: {reason}')
     if problems:
         print('Publication guard rejected these files:\n'+'\n'.join(problems));return 1
