@@ -19,6 +19,7 @@ ShellRoot {
     Variants { model: Quickshell.screens; Hud {} }
     Variants { model: Quickshell.screens; Popups {} }
     Variants { model: Quickshell.screens; AppSwitcher {} }
+    Variants { model: Quickshell.screens; WindowSwitcher {} }
     // heavy surfaces exist only while open
     Lazy { when: Shell.spotlight; surface: Component { Spotlight {} } }
     Lazy { when: Shell.launchpad; surface: Component { Launchpad {} } }
@@ -49,6 +50,15 @@ ShellRoot {
     GlobalShortcut { appid: "orchard"; name: "showdesktop";   onPressed: Hypr.here.forEach(c => Hypr.minimize(c)) }
     GlobalShortcut { appid: "orchard"; name: "about";         onPressed: Shell.open("about") }
     GlobalShortcut { appid: "orchard"; name: "escape";        onPressed: Shell.closeAll() }
+    GlobalShortcut { appid: "orchard"; name: "nightshift";    onPressed: Settings.nightShift = !Settings.nightShift }
+    // cycle the windows of the frontmost app (macOS ⌘`)
+    GlobalShortcut {
+        appid: "orchard"; name: "window-next"
+        onPressed: {
+            const mine = Hypr.clients.filter(c => c.class === Hypr.activeClass && c.workspace.id > 0)
+            if (mine.length > 1) Hypr.focusWindow(mine[mine.length - 1])
+        }
+    }
 
     IpcHandler {
         target: "shell"

@@ -54,7 +54,7 @@ Singleton {
             id: data
             property string appearance: "auto"
             property bool dockMagnify: true
-            property bool dockAutohide: false
+            property bool dockAutohide: true
             property int dockIconSize: 50
             property list<string> pinned: [
                 "org.kde.dolphin", "brave-browser", "footclient", "com.microsoft.VSCode",

@@ -223,14 +223,14 @@ PanelWindow {
             columns: 4; columnSpacing: 14; rowSpacing: 5
             Repeater {
                 model: [
-                    ["⌘ Space", "Spotlight"], ["⌘ Tab", "Switch apps"], ["⌘ Q", "Quit app"], ["⌘ W", "Close tab / window"],
-                    ["⌘ C / V / X", "Copy / Paste / Cut"], ["⌘ Z  ⇧⌘Z", "Undo / Redo"], ["⌘ A", "Select all"], ["⌘ F", "Find"],
-                    ["⌘ N  ⌘ T", "New window / tab"], ["⌘ S", "Save"], ["⌘ H", "Hide app"], ["⌘ M", "Minimize"],
-                    ["⌃⌘ F", "Full screen"], ["⌃⌥ F / C", "Fill / Center window"], ["⌃⌥ ← →", "Tile left / right"], ["⌘ ↑", "Mission Control"],
-                    ["⌘ 1–9", "Go to desktop"], ["⇧⌘ 1–9", "Send window to desktop"], ["⌘ L", "Launchpad"], ["⇧⌘ V", "Clipboard history"],
-                    ["⇧⌘ 3", "Screenshot screen"], ["⇧⌘ 4", "Screenshot area"], ["⇧⌘ 5", "Screenshot toolbar"], ["⌥⌘ Esc", "Force Quit"],
-                    ["⌃⌘ Q", "Lock screen"], ["⌘ ,", "App settings"], ["⌘ Return", "Terminal"], ["⌘ E", "Finder"],
-                    ["⌥⌘ D", "Hide / show Dock"], ["⌘ N (desktop)", "Notification Center"], ["⌘ /", "This sheet"], ["4 fingers ↑", "Mission Control"],
+                    ["⌘ Space", "Spotlight"], ["⌘ D / R", "Launcher (fuzzel)"], ["⌘ Return / Q", "Terminal"], ["⌘ E / B", "Files / Browser"],
+                    ["⌘ Tab", "Switch apps"], ["⌥ Tab", "Switch windows (all)"], ["⌘ W", "Next window of app"], ["⌘ ← → ↑ ↓", "Focus window"],
+                    ["⌘ C", "Close window"], ["⌘ V", "Float / tile"], ["⌘ F", "Full screen"], ["⌘ T", "Pin on top"],
+                    ["⌘ N", "Minimize"], ["⌘ H  ⌥⌘H", "Hide app / others"], ["⌥⌘ Q", "Quit app"], ["⌥⌘ Esc", "Force Quit"],
+                    ["⌘ 1–0", "Go to desktop"], ["⇧⌘ 1–0", "Send to desktop"], ["⌃⌘ ← →", "Prev / next desktop"], ["⌘ `", "Scratchpad"],
+                    ["F3  ⌃↑", "Mission Control"], ["F4  ⌘A", "Launchpad"], ["⌃⌥ F / C", "Fill / center"], ["⌃⌥ ← →", "Tile left / right"],
+                    ["⌘ S  ⌥⌘S", "Screenshot (clipboard)"], ["⇧⌘ 3 / 4 / 5", "Mac screenshots"], ["⇧⌘ V", "Clipboard"], ["⌘ L", "Lock"],
+                    ["⌘ = / −", "Brightness"], ["⇧⌘ N", "Night Shift"], ["⌘ I  ⌥⌘C", "Control Center"], ["⇧⌘ B", "Dock auto-hide"],
                 ]
                 RowLayout {
                     required property var modelData

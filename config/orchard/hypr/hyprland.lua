@@ -152,123 +152,115 @@ hl.gesture({ fingers = 4, direction = "down", action = function () hl.dispatch(h
 hl.gesture({ fingers = 3, direction = "up",   action = function () hl.dispatch(hl.dsp.global("orchard:mission")) end })
 
 ---------------------------------------------------------------- keys
+-- Your zero keybindings, exactly as before, plus the Mac extras on keys
+-- zero never used. Copy/paste stay on Ctrl like any Linux desktop.
 local function b(k, d, o) hl.bind(k, d, o) end
 local exec = hl.dsp.exec_cmd
 local function g(name) return hl.dsp.global("orchard:" .. name) end
-local CMD = "SUPER"
-
--- ⌘-letter shortcuts go to the focused app. Terminals use Ctrl+Shift for
--- copy/paste and friends, everything else uses Ctrl.
-local TERMS = { footclient = true, foot = true, kitty = true, Alacritty = true, ["com.mitchellh.ghostty"] = true }
-local function isTerm()
-    local w = hl.get_active_window()
-    return w ~= nil and TERMS[w.class] == true
-end
-local function send(mods, key)
-    hl.dispatch(hl.dsp.send_shortcut({ mods = mods, key = key }))
-end
-local function cmd(key, termShift)
-    b(CMD .. " + " .. key, function ()
-        if termShift and isTerm() then send("CTRL SHIFT", key) else send("CTRL", key) end
-    end)
-end
-for _, k in ipairs({ "C", "V", "F", "T", "N" }) do cmd(k, true) end
-for _, k in ipairs({ "X", "Z", "A", "S", "O", "P", "R", "L", "D", "G", "K", "U", "I", "B", "J", "Y" }) do cmd(k, false) end
-b(CMD .. " + SHIFT + Z", function () send("CTRL SHIFT", "Z") end, { desc = "Redo" })
-b(CMD .. " + SHIFT + T", function () send("CTRL SHIFT", "T") end, { desc = "Reopen tab" })
-b(CMD .. " + SHIFT + N", function () send("CTRL SHIFT", "N") end, { desc = "New private window / folder" })
-b(CMD .. " + SHIFT + S", function () send("CTRL SHIFT", "S") end, { desc = "Save As" })
-b(CMD .. " + comma",     function () send("CTRL", "comma") end, { desc = "App settings" })
-b(CMD .. " + equal",     function () send("CTRL", "equal") end, { desc = "Zoom in" })
-b(CMD .. " + minus",     function () send("CTRL", "minus") end, { desc = "Zoom out" })
-b(CMD .. " + 0",         function () send("CTRL", "0") end, { desc = "Actual size" })
-b(CMD .. " + bracketleft",  function () send("ALT", "left") end,  { desc = "Back" })
-b(CMD .. " + bracketright", function () send("ALT", "right") end, { desc = "Forward" })
-b(CMD .. " + BackSpace", function () send("CTRL", "BackSpace") end, { desc = "Delete word" })
-b(CMD .. " + left",  function () send("", "Home") end, { desc = "Line start" })
-b(CMD .. " + right", function () send("", "End") end,  { desc = "Line end" })
-b("ALT + left",  function () send("CTRL", "left") end,  { desc = "Word left" })
-b("ALT + right", function () send("CTRL", "right") end, { desc = "Word right" })
-b("ALT + BackSpace", function () send("CTRL", "BackSpace") end, { desc = "Delete word" })
-
--- ⌘W closes the tab, or the window when the app has no tabs (terminals)
-b(CMD .. " + W", function ()
-    if isTerm() then hl.dispatch(hl.dsp.window.close()) else send("CTRL", "W") end
-end, { desc = "Close tab / window" })
-b(CMD .. " + SHIFT + W", hl.dsp.window.close(), { desc = "Close window" })
-b(CMD .. " + Q",          g("quit"),       { desc = "Quit app" })
-b(CMD .. " + H",          g("hide"),       { desc = "Hide app" })
-b(CMD .. " + ALT + H",    g("hideothers"), { desc = "Hide others" })
-b(CMD .. " + M",          g("minimize"),   { desc = "Minimize" })
-b(CMD .. " + CTRL + F",   hl.dsp.window.fullscreen({ mode = "fullscreen" }), { desc = "Full screen" })
-b("CTRL + ALT + F",       g("fill"),       { desc = "Fill" })
-b("CTRL + ALT + C",       g("center"),     { desc = "Center" })
-b("CTRL + ALT + left",    g("tileleft"),   { desc = "Tile left" })
-b("CTRL + ALT + right",   g("tileright"),  { desc = "Tile right" })
-b("CTRL + ALT + Return",  hl.dsp.window.fullscreen({ mode = "maximized" }), { desc = "Zoom" })
-b(CMD .. " + CTRL + T",   hl.dsp.window.float({ action = "toggle" }), { desc = "Tile / float window" })
-
--- system
-b(CMD .. " + Space",       g("spotlight"),     { desc = "Spotlight" })
-b(CMD .. " + SHIFT + V",   g("clipboard"),     { desc = "Clipboard history" })
-b(CMD .. " + Tab",         g("switch-next"),   { desc = "App switcher" })
-b(CMD .. " + SHIFT + Tab", g("switch-prev"),   { desc = "App switcher back" })
-b("Super_L", g("switch-commit"), { release = true, ignore_mods = true, non_consuming = true })
-b(CMD .. " + up",          g("mission"),       { desc = "Mission Control" })
-b("CTRL + up",             g("mission"),       { desc = "Mission Control" })
-b("F3",                    g("mission"))
-b("F4",                    g("launchpad"))
-b(CMD .. " + SHIFT + A",   g("launchpad"),     { desc = "Apps" })
-b(CMD .. " + ALT + Escape", g("forcequit"),    { desc = "Force Quit" })
-b(CMD .. " + CTRL + Q",    exec("loginctl lock-session"), { desc = "Lock Screen" })
-b(CMD .. " + SHIFT + Q",   exec("qs -c orchard ipc call shell confirm logout"), { desc = "Log Out" })
-b(CMD .. " + ALT + D",     g("dock"),          { desc = "Hide / show Dock" })
-b(CMD .. " + ALT + N",     g("notifications"), { desc = "Notification Center" })
-b(CMD .. " + ALT + C",     g("control"),       { desc = "Control Center" })
-b(CMD .. " + ALT + comma", g("settings"),      { desc = "System Settings" })
-b(CMD .. " + ALT + slash", g("shortcuts"),     { desc = "Keyboard shortcuts" })
-b(CMD .. " + Return",      exec(BIN .. "term"), { desc = "Terminal" })
-b(CMD .. " + ALT + space", exec("dolphin"),    { desc = "Finder" })
-
--- screenshots (⇧⌘3 screen, ⇧⌘4 area, ⇧⌘5 toolbar; add ⌃ for clipboard)
-b(CMD .. " + SHIFT + 3",        exec(BIN .. "shot screen 0 file"))
-b(CMD .. " + SHIFT + 4",        exec(BIN .. "shot region 0 file"))
-b(CMD .. " + SHIFT + 5",        g("screenshot"))
-b(CMD .. " + CTRL + SHIFT + 3", exec(BIN .. "shot screen 0 clip"))
-b(CMD .. " + CTRL + SHIFT + 4", exec(BIN .. "shot region 0 clip"))
-b("Print",                      exec(BIN .. "shot screen 0 file"))
-b(CMD .. " + SHIFT + C",        exec("hyprpicker -a -f hex"), { desc = "Colour picker" })
-
--- Spaces (desktops)
-for i = 1, 9 do
-    b(CMD .. " + " .. i,             hl.dsp.focus({ workspace = i }))
-    b(CMD .. " + SHIFT + " .. i,     hl.dsp.window.move({ workspace = i }))
-end
-b("CTRL + left",  hl.dsp.focus({ workspace = "e-1" }), { desc = "Previous desktop" })
-b("CTRL + right", hl.dsp.focus({ workspace = "e+1" }), { desc = "Next desktop" })
-b(CMD .. " + CTRL + left",  hl.dsp.focus({ workspace = "r-1" }))
-b(CMD .. " + CTRL + right", hl.dsp.focus({ workspace = "r+1" }))
-b(CMD .. " + grave", hl.dsp.window.cycle_next(), { desc = "Next window of app" })
-
-b(CMD .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
-b(CMD .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
-b("CTRL + SUPER + mouse:272", hl.dsp.window.drag(), { mouse = true })
-
--- media keys → the shell's HUD
+local M = "SUPER"
+local Z = HOME .. "/.config/zero/bin/"
 local osd = "qs -c orchard ipc call osd "
-b("XF86AudioRaiseVolume",  exec(osd .. "volume 0.0625"),  { locked = true, repeating = true })
-b("XF86AudioLowerVolume",  exec(osd .. "volume -0.0625"), { locked = true, repeating = true })
-b("XF86AudioMute",         exec(osd .. "volume mute"),    { locked = true })
+
+-- apps & launchers (zero)
+b(M .. " + Return",    exec(BIN .. "term"),  { desc = "Terminal" })
+b(M .. " + Q",         exec(BIN .. "term"),  { desc = "Terminal" })
+b(M .. " + E",         exec("dolphin"),      { desc = "Files" })
+b(M .. " + B",         exec("brave"),        { desc = "Browser" })
+b(M .. " + SHIFT + C", exec("code"),         { desc = "VS Code" })
+b(M .. " + Space",     g("spotlight"),       { desc = "Spotlight" })
+b(M .. " + D",         exec("fuzzel"),       { desc = "Launcher" })
+b(M .. " + R",         exec("fuzzel"),       { desc = "Launcher" })
+b(M .. " + SHIFT + V", exec(Z .. "clip"),    { desc = "Clipboard" })
+b(M .. " + SHIFT + E", exec(Z .. "power"),   { desc = "Power menu" })
+b(M .. " + Escape",    exec(Z .. "power"),   { desc = "Power menu" })
+b(M .. " + I",         g("control"),         { desc = "Control Center" })
+b(M .. " + slash",     g("shortcuts"),       { desc = "Keybinds" })
+b(M .. " + SHIFT + equal", exec(BIN .. "textsize up"),   { desc = "Bigger text" })
+b(M .. " + SHIFT + minus", exec(BIN .. "textsize down"), { desc = "Smaller text" })
+b(M .. " + SHIFT + N", g("nightshift"),      { desc = "Night light" })
+b(M .. " + SHIFT + B", g("dock"),            { desc = "Toggle dock auto-hide" })
+b(M .. " + S",         exec(Z .. "shot screen-clipboard"), { desc = "Copy full-screen screenshot" })
+b(M .. " + CTRL + S",  exec(Z .. "shot screen-clipboard"), { desc = "Copy full-screen screenshot" })
+b(M .. " + ALT + S",   exec(Z .. "shot region-clipboard"), { desc = "Copy selected screenshot area" })
+b("Print",             exec(Z .. "shot screen-clipboard"), { desc = "Copy full-screen screenshot" })
+b("SHIFT + Print",     exec(Z .. "shot screen"))
+b(M .. " + SHIFT + S", exec(Z .. "shot edit"))
+b(M .. " + SHIFT + P", exec("hyprpicker -a -f hex"))
+b(M .. " + L",         exec("loginctl lock-session"), { desc = "Lock" })
+b(M .. " + M",         exec("hyprctl dispatch 'hl.dsp.exit()'"), { desc = "Exit Hyprland" })
+
+-- windows (zero)
+b(M .. " + C", hl.dsp.window.close())
+b(M .. " + V", hl.dsp.window.float({ action = "toggle" }))
+b(M .. " + F", hl.dsp.window.fullscreen())
+b(M .. " + P", hl.dsp.window.pseudo())
+b(M .. " + J", hl.dsp.layout("togglesplit"))
+b(M .. " + T", hl.dsp.window.pin())
+for dir, key in pairs({ left = "left", right = "right", up = "up", down = "down" }) do
+    b(M .. " + " .. key,         hl.dsp.focus({ direction = dir }))
+    b(M .. " + SHIFT + " .. key, hl.dsp.window.swap({ direction = dir }))
+end
+b(M .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
+b(M .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+for i = 1, 10 do
+    local key = i % 10
+    b(M .. " + " .. key,         hl.dsp.focus({ workspace = i }))
+    b(M .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = i }))
+end
+b(M .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+b(M .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
+b(M .. " + grave",         hl.dsp.workspace.toggle_special("magic"))
+b(M .. " + SHIFT + grave", hl.dsp.window.move({ workspace = "special:magic" }))
+
+-- volume / brightness / media (zero keys, orchard HUD)
+b("XF86AudioRaiseVolume",  exec(osd .. "volume 0.05"),  { locked = true, repeating = true })
+b("XF86AudioLowerVolume",  exec(osd .. "volume -0.05"), { locked = true, repeating = true })
+b("XF86AudioMute",         exec(osd .. "volume mute"),  { locked = true })
 b("XF86AudioMicMute",      exec("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"), { locked = true })
-b("XF86MonBrightnessUp",   exec(osd .. "brightness 0.0625"),  { locked = true, repeating = true })
-b("XF86MonBrightnessDown", exec(osd .. "brightness -0.0625"), { locked = true, repeating = true })
--- this laptop's F11/F12 are disabled (keyboard fault): ⌥⌘= / ⌥⌘- for brightness
-b(CMD .. " + ALT + equal", exec(osd .. "brightness 0.0625"),  { repeating = true, desc = "Brightness up" })
-b(CMD .. " + ALT + minus", exec(osd .. "brightness -0.0625"), { repeating = true, desc = "Brightness down" })
+b("XF86MonBrightnessUp",   exec(osd .. "brightness 0.05"),  { locked = true, repeating = true })
+b("XF86MonBrightnessDown", exec(osd .. "brightness -0.05"), { locked = true, repeating = true })
+b(M .. " + CTRL + up",     exec(osd .. "brightness 0.05"),  { repeating = true })
+b(M .. " + CTRL + down",   exec(osd .. "brightness -0.05"), { repeating = true })
+-- laptop F11/F12 (brightness keys) are blocked — faulty hardware
+b(M .. " + equal",         exec(osd .. "brightness 0.05"),  { repeating = true, desc = "Brightness up" })
+b(M .. " + minus",         exec(osd .. "brightness -0.05"), { repeating = true, desc = "Brightness down" })
 b("XF86AudioNext",  exec("playerctl next"),       { locked = true })
 b("XF86AudioPrev",  exec("playerctl previous"),   { locked = true })
 b("XF86AudioPlay",  exec("playerctl play-pause"), { locked = true })
 b("XF86AudioPause", exec("playerctl play-pause"), { locked = true })
+
+-- Mac extras (keys zero never used)
+b(M .. " + Tab",           g("switch-next"),   { desc = "Switch apps" })
+b(M .. " + SHIFT + Tab",   g("switch-prev"),   { desc = "Switch apps back" })
+b("ALT + Tab",             g("winswitch-next"), { desc = "Switch windows" })
+b("ALT + SHIFT + Tab",     g("winswitch-prev"), { desc = "Switch windows back" })
+b("Super_L", g("switch-commit"),    { release = true, ignore_mods = true, non_consuming = true })
+b("Super_R", g("switch-commit"),    { release = true, ignore_mods = true, non_consuming = true })
+b("Alt_L",   g("winswitch-commit"), { release = true, ignore_mods = true, non_consuming = true })
+b("Alt_R",   g("winswitch-commit"), { release = true, ignore_mods = true, non_consuming = true })
+b(M .. " + W",             g("window-next"),   { desc = "Next window of this app" })
+b("F3",                    g("mission"),       { desc = "Mission Control" })
+b("CTRL + up",             g("mission"),       { desc = "Mission Control" })
+b("F4",                    g("launchpad"),     { desc = "Launchpad" })
+b(M .. " + A",             g("launchpad"),     { desc = "Launchpad" })
+b(M .. " + H",             g("hide"),          { desc = "Hide app" })
+b(M .. " + ALT + H",       g("hideothers"),    { desc = "Hide others" })
+b(M .. " + N",             g("minimize"),      { desc = "Minimize window" })
+b(M .. " + ALT + Q",       g("quit"),          { desc = "Quit app" })
+b(M .. " + ALT + Escape",  g("forcequit"),     { desc = "Force Quit" })
+b(M .. " + ALT + D",       g("dock"),          { desc = "Toggle dock auto-hide" })
+b(M .. " + ALT + N",       g("notifications"), { desc = "Notification Center" })
+b(M .. " + ALT + C",       g("control"),       { desc = "Control Center" })
+b(M .. " + ALT + comma",   g("settings"),      { desc = "System Settings" })
+b(M .. " + SHIFT + 3",     exec(BIN .. "shot screen 0 file"))
+b(M .. " + SHIFT + 4",     exec(BIN .. "shot region 0 file"))
+b(M .. " + SHIFT + 5",     g("screenshot"))
+b("CTRL + ALT + F",        g("fill"),          { desc = "Fill screen" })
+b("CTRL + ALT + C",        g("center"),        { desc = "Center window" })
+b("CTRL + ALT + left",     g("tileleft"),      { desc = "Tile left" })
+b("CTRL + ALT + right",    g("tileright"),     { desc = "Tile right" })
+b(M .. " + CTRL + left",   hl.dsp.focus({ workspace = "e-1" }), { desc = "Previous desktop" })
+b(M .. " + CTRL + right",  hl.dsp.focus({ workspace = "e+1" }), { desc = "Next desktop" })
 
 b("SUPER + CTRL + ALT + R", exec("hyprctl reload"), { desc = "Reload Hyprland" })
 

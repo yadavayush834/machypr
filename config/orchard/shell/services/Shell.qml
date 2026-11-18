@@ -28,7 +28,9 @@ Singleton {
         popupX = x ?? popupX
         popup = name
     }
+    signal cancelled()
     function closeAll() {
+        cancelled()
         popup = ""; spotlight = false; launchpad = false; mission = false
         switcher = false; forceQuit = false; shotMenu = false; shortcuts = false; about = false; confirm = ""
     }

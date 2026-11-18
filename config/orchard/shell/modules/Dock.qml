@@ -18,9 +18,19 @@ PanelWindow {
     readonly property real pad: 6
     readonly property real barH: base + pad * 2 + 6
     readonly property bool fullscreen: Hypr.active && Hypr.active.fullscreen === 2
-    property bool revealed: !Settings.dockAutohide || hot.containsMouse || menuOpen
     property bool menuOpen: ctx.visible
     readonly property bool hovering: hot.containsMouse
+    // auto-hide: appears after the pointer rests on the bottom edge briefly,
+    // leaves shortly after the pointer does (macOS timings, no flicker)
+    property bool shown: false
+    readonly property bool revealed: !Settings.dockAutohide || shown || menuOpen || Shell.popup === "dock"
+    Timer { id: showTimer; interval: 90; onTriggered: dock.shown = true }
+    Timer { id: hideTimer; interval: 450; onTriggered: if (!hot.containsMouse && !dock.menuOpen) dock.shown = false }
+    onHoveringChanged: {
+        if (hovering) { hideTimer.stop(); if (!shown) showTimer.restart() }
+        else { showTimer.stop(); hideTimer.restart() }
+    }
+    onMenuOpenChanged: if (!menuOpen && !hovering) hideTimer.restart()
 
     visible: !fullscreen && !Shell.launchpad && !Shell.mission
     anchors { bottom: true; left: true; right: true }
@@ -30,11 +40,16 @@ PanelWindow {
     WlrLayershell.namespace: "orchard-dock"
     WlrLayershell.layer: WlrLayer.Top
 
-    // only the glass (and the magnified icons) take input
+    // Input zone. It must not change while the pointer moves (magnification
+    // resizing it every frame made the pointer leave/enter = the glitch).
+    // Revealed: the dock plus headroom for magnified icons. Hidden: a 2px
+    // strip along the bottom edge under the dock.
+    readonly property real extra: (maxSize - base) * 2.2
     Item {
         id: hitbox
-        x: shelf.x; width: shelf.width
-        y: dock.revealed ? dock.height - dock.barH - 6 - (hot.containsMouse ? dock.maxSize - dock.base + 30 : 0) : dock.height - 3
+        x: Math.max(0, dock.restLeft - dock.extra)
+        width: Math.min(dock.width, dock.restRow + dock.pad * 2 + 4 + dock.extra * 2)
+        y: dock.revealed ? dock.height - dock.barH - 8 - (dock.maxSize - dock.base) : dock.height - 2
         height: dock.height - y
     }
 
@@ -65,7 +80,7 @@ PanelWindow {
     readonly property real restRow: (apps.length + trailing.length) * (base + 4) - 4 + 5
     readonly property real restLeft: (width - (restRow + pad * 2 + 4)) / 2
     function sizeFor(item) {
-        if (!Settings.dockMagnify || !hot.containsMouse) return base
+        if (!Settings.dockMagnify || !hot.containsMouse || !revealed) return base
         const center = restLeft + pad + 2 + item.restX + base / 2
         const d = Math.abs(dock.mouseX - center)
         const range = base * 3
@@ -73,20 +88,20 @@ PanelWindow {
         return base + (maxSize - base) * Math.cos(d / range * Math.PI / 2)
     }
 
-    MouseArea {
-        id: hot
-        anchors { left: parent.left; right: parent.right; top: hitbox.top; bottom: parent.bottom }
-        hoverEnabled: true
-        acceptedButtons: Qt.NoButton
-        onPositionChanged: m => dock.mouseX = m.x
-        onExited: dock.mouseX = -1000
-    }
-
     Item {
         id: slide
         anchors.fill: parent
+        // Hover is tracked on the parent of the icons, so moving onto an icon
+        // never counts as leaving the dock. The window mask limits it to the
+        // dock zone.
+        HoverHandler {
+            id: hot
+            readonly property bool containsMouse: hovered
+            onPointChanged: dock.mouseX = point.position.x
+            onHoveredChanged: if (!hovered) dock.mouseX = -1000
+        }
         transform: Translate {
-            y: dock.revealed ? 0 : dock.barH + 12
+            y: dock.revealed ? 0 : dock.barH + 16
             Behavior on y { NumberAnimation { duration: Theme.normal; easing.type: Theme.ease } }
         }
 
