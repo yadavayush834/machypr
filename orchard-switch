@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# orchard-switch orchard|zero — swap the live desktop between the macOS-style
+# orchard rice and the minimal zero rice. Fully reversible; no sudo.
+set -euo pipefail
+here=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+cfg=$HOME/.config
+st=${XDG_STATE_HOME:-$HOME/.local/state}/orchard
+zero=$HOME/projects/zero-rice/config
+mkdir -p "$st/zero-backup" "$cfg/quickshell" "$cfg/fontconfig" "$cfg/systemd/user" "$cfg/hypr"
+
+live() { [[ -n ${HYPRLAND_INSTANCE_SIGNATURE:-} ]]; }
+
+to_orchard() {
+  # keep zero's GTK/Qt settings so switching back restores them exactly
+  for f in gtk-3.0/settings.ini gtk-4.0/settings.ini qt6ct/qt6ct.conf; do
+    [[ -f $cfg/$f && ! -f $st/zero-backup/${f//\//_} ]] && cp "$cfg/$f" "$st/zero-backup/${f//\//_}"
+  done
+  ln -sfn "$here/config/orchard" "$cfg/orchard"
+  ln -sfn "$here/config/orchard/shell" "$cfg/quickshell/orchard"
+  ln -sfn "$here/config/orchard/hypr/hyprland.lua" "$cfg/hypr/hyprland.lua"
+  ln -sfn "$here/config/orchard/fontconfig/fonts.conf" "$cfg/fontconfig/fonts.conf"
+  for v in 3.0 4.0; do [[ -L $cfg/gtk-$v/gtk.css ]] && rm "$cfg/gtk-$v/gtk.css"; done
+  for u in "$here"/systemd/*.service; do ln -sfn "$u" "$cfg/systemd/user/$(basename "$u")"; done
+  systemctl --user daemon-reload
+  fc-cache -f >/dev/null 2>&1 &
+  "$cfg/orchard/bin/appearance" "$(cur_mode)"
+  "$cfg/orchard/bin/lockprep"
+  if live; then
+    # foot-server stays up: every open terminal is its client
+    systemctl --user stop zero-bar zero-notify zero-idle zero-clipboard 2>/dev/null || true
+    pkill -x swaybg || true; pkill -x dunst || true
+    hyprctl reload >/dev/null
+    "$cfg/orchard/bin/start"
+  fi
+  echo "orchard is live. Back to zero any time: $here/orchard-switch zero"
+}
+
+to_zero() {
+  systemctl --user stop orchard-shell orchard-idle orchard-clipboard 2>/dev/null || true
+  ln -sfn "$zero/hypr/hyprland.lua" "$cfg/hypr/hyprland.lua"
+  rm -f "$cfg/fontconfig/fonts.conf"
+  for v in 3.0 4.0; do ln -sfn "$zero/zero/gtk.css" "$cfg/gtk-$v/gtk.css"; done
+  for f in gtk-3.0/settings.ini gtk-4.0/settings.ini qt6ct/qt6ct.conf; do
+    b=$st/zero-backup/${f//\//_}; [[ -f $b ]] && cp "$b" "$cfg/$f"
+  done
+  fc-cache -f >/dev/null 2>&1 &
+  if live; then hyprctl reload >/dev/null; "$cfg/zero/bin/start"; fi
+  echo "zero is live. Orchard again: $here/orchard-switch orchard"
+}
+
+cur_mode() {
+  local a h
+  a=$(jq -r '.appearance // "auto"' "$st/settings.json" 2>/dev/null || echo auto)
+  h=$(date +%H)
+  if [[ $a == dark || ( $a == auto && ( 10#$h -lt 7 || 10#$h -ge 19 ) ) ]]; then echo dark; else echo light; fi
+}
+
+case ${1:-} in
+  orchard) to_orchard ;;
+  zero) to_zero ;;
+  *) echo "usage: orchard-switch orchard|zero"; exit 1 ;;
+esac

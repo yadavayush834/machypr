@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# textsize up|down|reset|apply — one text-size setting for the whole desktop.
+# GTK apps change live; Qt apps (dolphin) and new terminals pick it up on next launch.
+state="${XDG_STATE_HOME:-$HOME/.local/state}/orchard/textscale"
+mkdir -p "${state%/*}"
+pct=$(cat "$state" 2>/dev/null); [[ $pct =~ ^[0-9]+$ ]] || pct=100
+case "$1" in
+  up)    pct=$(( pct + 10 )) ;;
+  down)  pct=$(( pct - 10 )) ;;
+  reset) pct=100 ;;
+  apply) ;;
+  *) echo "usage: textsize up|down|reset|apply"; exit 1 ;;
+esac
+(( pct < 70 )) && pct=70; (( pct > 200 )) && pct=200
+echo "$pct" > "$state"
+f=$(awk -v p="$pct" 'BEGIN{printf "%.2f", p/100}')
+
+# GTK 3/4 (and Chromium/Brave, which follow GTK's text scaling)
+gsettings set org.gnome.desktop.interface text-scaling-factor "$f"
+
+# Qt via qt6ct: base size 10pt
+qt="$HOME/.config/qt6ct/qt6ct.conf"
+if [[ -f $qt ]]; then
+  s=$(awk -v p="$pct" 'BEGIN{printf "%g", 10*p/100}')
+  sed -i -E "s/^(fixed|general)=\"([^,]*),[0-9.]+,/\1=\"\2,$s,/" "$qt"
+fi
+
+# terminal: base 11pt, read by bin/term for every new window
+awk -v p="$pct" 'BEGIN{printf "%g\n", 11*p/100}' > "${state%/*}/termsize"
+

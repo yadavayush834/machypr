@@ -1,0 +1,6 @@
+[Unit]
+Description=orchard: foot terminal server
+PartOf=graphical-session.target
+[Service]
+ExecStart=/usr/bin/foot --server --config=%h/.config/orchard/foot.ini
+Restart=on-failure

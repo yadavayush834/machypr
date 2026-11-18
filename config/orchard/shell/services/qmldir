@@ -1,0 +1,17 @@
+module services
+singleton Theme 1.0 Theme.qml
+singleton Settings 1.0 Settings.qml
+singleton Hypr 1.0 Hypr.qml
+singleton Apps 1.0 Apps.qml
+singleton Shell 1.0 Shell.qml
+singleton KeyMap 1.0 KeyMap.qml
+singleton Net 1.0 Net.qml
+singleton Audio 1.0 Audio.qml
+singleton Brightness 1.0 Brightness.qml
+singleton Notifs 1.0 Notifs.qml
+singleton Caffeine 1.0 Caffeine.qml
+singleton Menus 1.0 Menus.qml
+singleton Trash 1.0 Trash.qml
+singleton Mime 1.0 Mime.qml
+singleton Wallpaper 1.0 Wallpaper.qml
+singleton Osd 1.0 Osd.qml

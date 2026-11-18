@@ -1,0 +1,4 @@
+config/orchard/wallpapers/*.jpeg
+config/orchard/wallpapers/*.jpg
+config/orchard/wallpapers/*.png
+*.qmlc

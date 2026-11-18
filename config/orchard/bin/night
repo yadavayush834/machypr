@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# night on|off|apply — Night Shift (hyprsunset, 4000K)
+state="${XDG_STATE_HOME:-$HOME/.local/state}/orchard/night"; mkdir -p "${state%/*}"
+on()  { pgrep -x hyprsunset >/dev/null || setsid -f hyprsunset -t 4000 >/dev/null 2>&1; echo on > "$state"; }
+off() { pkill -x hyprsunset; echo off > "$state"; }
+case $1 in
+  on) on ;; off) off ;;
+  apply) f="$HOME/.local/state/orchard/settings.json"
+         jq -e '.nightShift == true' "$f" >/dev/null 2>&1 && on || true ;;
+esac

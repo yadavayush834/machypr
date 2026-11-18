@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# orchard session bootstrap — run once by Hyprland on start
+vars="WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE QT_QPA_PLATFORMTHEME XCURSOR_THEME XCURSOR_SIZE NO_AT_BRIDGE GTK_A11Y GTK_CSD"
+export XDG_CURRENT_DESKTOP=Hyprland
+systemctl --user import-environment $vars
+dbus-update-activation-environment --systemd $vars
+hyprctl setcursor MacTahoe-cursors 24 >/dev/null
+# the shell is the notification daemon now
+systemctl --user stop zero-notify 2>/dev/null; pkill -x dunst
+# reuse a running foot server (closing it would close every terminal)
+systemctl --user is-active -q foot-server || systemctl --user start orchard-foot
+systemctl --user start orchard-shell orchard-idle orchard-clipboard
+[[ -f /usr/lib/systemd/user/plasma-polkit-agent.service ]] && systemctl --user start plasma-polkit-agent
+"$HOME/.config/orchard/bin/textsize" apply
+"$HOME/.config/orchard/bin/night" apply

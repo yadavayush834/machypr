@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# appearance dark|light — flips GTK, libadwaita, Qt/Kvantum, icons and the
+# terminal together. Called by the shell whenever Light/Dark/Auto changes.
+mode=${1:-dark}
+gs() { gsettings set org.gnome.desktop.interface "$@"; }
+if [[ $mode == dark ]]; then
+  gs gtk-theme MacTahoe-Dark; gs icon-theme MacTahoe-dark; gs color-scheme prefer-dark
+  kv=MacTahoeDark; sig=USR1
+else
+  gs gtk-theme MacTahoe-Light; gs icon-theme MacTahoe-light; gs color-scheme default
+  kv=MacTahoe; sig=USR2
+fi
+gs cursor-theme MacTahoe-cursors; gs cursor-size 24
+font=$(fc-list -q "SF Pro Text" && echo "SF Pro Text" || echo "Inter")
+gs font-name "$font 10"; gs document-font-name "$font 10"
+gs monospace-font-name "$(fc-list -q "SF Mono" && echo "SF Mono" || echo "JetBrainsMono Nerd Font") 10"
+gs font-antialiasing grayscale; gs font-hinting slight
+gsettings set org.gnome.desktop.wm.preferences button-layout 'close,minimize,maximize:'
+# GTK3 settings.ini for apps that ignore gsettings
+for v in 3.0 4.0; do
+  mkdir -p "$HOME/.config/gtk-$v"
+  f="$HOME/.config/gtk-$v/settings.ini"
+  [[ -L $f ]] && rm -f "$f"
+  cat > "$f" <<INI
+[Settings]
+gtk-theme-name=MacTahoe-$([[ $mode == dark ]] && echo Dark || echo Light)
+gtk-icon-theme-name=MacTahoe-$mode
+gtk-cursor-theme-name=MacTahoe-cursors
+gtk-cursor-theme-size=24
+gtk-font-name=$font 10
+gtk-application-prefer-dark-theme=$([[ $mode == dark ]] && echo 1 || echo 0)
+gtk-decoration-layout=close,minimize,maximize:
+gtk-xft-antialias=1
+gtk-xft-hinting=1
+gtk-xft-hintstyle=hintslight
+gtk-xft-rgba=none
+INI
+done
+command -v kvantummanager >/dev/null && kvantummanager --set "$kv" >/dev/null 2>&1
+qt="$HOME/.config/qt6ct/qt6ct.conf"
+[[ -f $qt ]] && sed -i -E "s/^icon_theme=.*/icon_theme=MacTahoe-$mode/; s/^style=.*/style=kvantum/" "$qt"
+pkill -$sig -x foot 2>/dev/null   # foot server: USR1 = dark palette, USR2 = light
+exit 0

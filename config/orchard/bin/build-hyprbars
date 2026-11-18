@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Build the official hyprbars plugin (red/yellow/green title bars on every
+# window) against this machine's Hyprland, then enable it. Re-run after a
+# Hyprland upgrade. Source: github.com/hyprwm/hyprland-plugins
+set -Eeuo pipefail
+rev=d2427d4d15b36df40468f5a58bbd67cdba19835d   # matches Hyprland 0.57.x
+ver=$(pkg-config --modversion hyprland)
+[[ $ver == 0.57.* ]] || { echo "pinned plugin revision targets 0.57.x, found $ver"; exit 1; }
+b=$(mktemp -d); trap 'rm -rf "$b"' EXIT
+git -C "$b" init -q
+git -C "$b" remote add origin https://github.com/hyprwm/hyprland-plugins.git
+git -C "$b" fetch -q --depth=1 origin "$rev"
+git -C "$b" checkout -q --detach FETCH_HEAD
+nice make -C "$b/hyprbars" -j2
+d="$HOME/.local/lib/orchard"; mkdir -p "$d"
+install -m755 "$b/hyprbars/hyprbars.so" "$d/hyprbars.so"
+echo "Installed $d/hyprbars.so — reloading Hyprland"
+hyprctl reload >/dev/null

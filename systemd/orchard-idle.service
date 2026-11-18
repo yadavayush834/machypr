@@ -1,0 +1,6 @@
+[Unit]
+Description=orchard: hypridle
+PartOf=graphical-session.target
+[Service]
+ExecStart=/usr/bin/hypridle -c %h/.config/orchard/hypridle.conf
+Restart=on-failure

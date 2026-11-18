@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# sound notify|volume|trash — short UI sounds (freedesktop theme)
+d=/usr/share/sounds/freedesktop/stereo
+case $1 in
+  notify) f=$d/message.oga ;;
+  volume) f=$d/audio-volume-change.oga ;;
+  trash)  f=$d/trash-empty.oga ;;
+  *) exit 0 ;;
+esac
+exec pw-play --volume 0.6 "$f" >/dev/null 2>&1

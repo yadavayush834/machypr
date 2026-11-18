@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# copy the current desktop picture for hyprlock (it blurs it itself)
+st="$HOME/.local/state/orchard"; mkdir -p "$st"
+w=$(jq -r '.wallpaper // empty' "$st/settings.json" 2>/dev/null)
+h=$(date +%H)
+if [[ -z $w ]]; then
+  dark=$(jq -r '.appearance // "auto"' "$st/settings.json" 2>/dev/null)
+  if [[ $dark == dark || ( $dark == auto && ( 10#$h -lt 7 || 10#$h -ge 19 ) ) ]]; then w=night; else w=day; fi
+  w="$HOME/.config/orchard/wallpapers/MacTahoe-$w.jpeg"
+fi
+ln -sf "$w" "$st/lock-wallpaper.jpg"
+# avatar: ~/.face if present, otherwise initials on a grey disc (like a new Mac account)
+if [[ -f $HOME/.face ]]; then ln -sf "$HOME/.face" "$st/avatar.png"
+elif [[ ! -f $st/avatar.png ]]; then
+  python3 - "$st/avatar.png" "${USER}" <<'PY'
+import sys
+from PIL import Image, ImageDraw, ImageFont
+out, user = sys.argv[1], sys.argv[2]
+S = 256
+im = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+d = ImageDraw.Draw(im)
+d.ellipse((0, 0, S - 1, S - 1), fill=(152, 152, 160, 255))
+try: f = ImageFont.truetype("/usr/share/fonts/inter/InterVariable.ttf", 110)
+except Exception: f = ImageFont.load_default()
+t = user[:1].upper()
+w = d.textbbox((0, 0), t, font=f)
+d.text(((S - (w[2] - w[0])) / 2 - w[0], (S - (w[3] - w[1])) / 2 - w[1]), t, font=f, fill="white")
+im.save(out)
+PY
+fi

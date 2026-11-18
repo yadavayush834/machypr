@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# shot screen|window|region [delay] [file|clip]
+# Saves "Screenshot YYYY-MM-DD at H.MM.SS AM.png" to ~/Pictures/Screenshots,
+# copies it, plays the shutter and shows the floating thumbnail (click = markup).
+mode=${1:-region}; delay=${2:-0}; dest=${3:-file}
+(( delay > 0 )) && sleep "$delay"
+case $mode in
+  region) g=$(slurp -d -b '#0000004d' -c '#ffffffcc' -s '#ffffff1a' -w 1) || exit 0 ;;
+  window) g=$(hyprctl activewindow -j | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"') ;;
+  screen) g="" ;;
+esac
+pw-play /usr/share/sounds/freedesktop/stereo/camera-shutter.oga >/dev/null 2>&1 &
+if [[ $dest == clip ]]; then
+  if [[ -n $g ]]; then grim -g "$g" - ; else grim - ; fi | wl-copy --type image/png
+  exit 0
+fi
+dir="$HOME/Pictures/Screenshots"; mkdir -p "$dir"
+file="$dir/Screenshot $(date '+%Y-%m-%d at %-I.%M.%S %p').png"
+if [[ -n $g ]]; then grim -g "$g" "$file"; else grim "$file"; fi
+wl-copy --type image/png < "$file"
+qs -c orchard ipc call osd thumbnail "$file" >/dev/null 2>&1

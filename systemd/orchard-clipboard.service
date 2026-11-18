@@ -1,0 +1,6 @@
+[Unit]
+Description=orchard: clipboard history
+PartOf=graphical-session.target
+[Service]
+ExecStart=/usr/bin/wl-paste --watch cliphist store
+Restart=on-failure

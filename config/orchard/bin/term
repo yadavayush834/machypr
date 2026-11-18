@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# new Terminal window at the current text size, in the current appearance
+s=$(cat "${XDG_STATE_HOME:-$HOME/.local/state}/orchard/termsize" 2>/dev/null); s=${s:-11}
+f=$(fc-list -q "SF Mono" && echo "SF Mono" || echo "JetBrainsMono Nerd Font")
+o=(-o "main.font=$f:size=$s" -o "main.font-bold=$f:weight=bold:size=$s")
+footclient "${o[@]}" "$@" 2>/dev/null || exec foot -c "$HOME/.config/orchard/foot.ini" "${o[@]}" "$@"
