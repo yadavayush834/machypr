@@ -36,7 +36,8 @@ Item {
             color: Theme.barText
             font.family: Theme.font
             font.pixelSize: Theme.textSize
-            font.weight: b.bold ? Font.Bold : Font.Medium
+            font.weight: b.bold ? Font.Bold : Font.Normal
+            font.letterSpacing: Theme.tracking
             renderType: Text.NativeRendering
         }
     }

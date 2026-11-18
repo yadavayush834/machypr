@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Install Apple's system fonts (SF Pro, SF Mono, New York) for this user.
+# They come straight from Apple's developer site. Apple's licence covers
+# mock-ups for Apple platforms, so using them on Linux is your own call;
+# orchard never ships them. Everything in orchard (shell, GTK, Qt, KDE,
+# terminal, web pages asking for -apple-system) switches to them on its own.
+set -euo pipefail
+command -v 7z >/dev/null || sudo pacman -S --needed 7zip
+dest="$HOME/.local/share/fonts/apple"; mkdir -p "$dest"
+tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
+for f in SF-Pro SF-Mono NY; do
+  echo "downloading $f…"
+  curl -fsSL -o "$tmp/$f.dmg" "https://devimages-cdn.apple.com/design/resources/download/$f.dmg"
+  mkdir -p "$tmp/$f" && cd "$tmp/$f"
+  7z x -y "../$f.dmg" >/dev/null
+  pkg=$(find . -name '*.pkg' | head -1)
+  7z x -y "$pkg" >/dev/null
+  payload=$(find . -name 'Payload~' -o -name 'Payload' | head -1)
+  7z x -y "$payload" >/dev/null 2>&1 || true
+  [[ -f "Payload~" ]] && 7z x -y "Payload~" >/dev/null
+  find . \( -name '*.otf' -o -name '*.ttf' \) -path '*Library/Fonts*' -exec cp -f {} "$dest/" \;
+  cd "$tmp"
+done
+fc-cache -f "$dest" >/dev/null
+echo "installed: $(ls "$dest" | wc -l) font files"
+fc-list : family | grep -E '^SF Pro|^SF Mono|^New York' | sort -u | head
+# re-apply so GTK / Qt / KDE / terminal pick SF up now
+mode=$(gsettings get org.gnome.desktop.interface color-scheme | grep -q dark && echo dark || echo light)
+"$HOME/.config/orchard/bin/appearance" "$mode"
+systemctl --user restart orchard-shell
+echo "Done. Open apps pick the new font up when restarted."

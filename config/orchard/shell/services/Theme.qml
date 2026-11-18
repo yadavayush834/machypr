@@ -17,6 +17,8 @@ Singleton {
                                         : (Qt.fontFamilies().indexOf("Inter Display") >= 0 ? "Inter Display" : font)
     readonly property string fontMono: Qt.fontFamilies().indexOf("SF Mono") >= 0 ? "SF Mono" : "JetBrainsMono Nerd Font"
     readonly property int textSize: 13          // px == pt on macOS @1x
+    // SF Pro Text is tracked tighter than Inter at UI sizes; close the gap
+    readonly property real tracking: font === "Inter" ? -0.18 : 0
     readonly property int smallSize: 11
 
     // ---- colour -----------------------------------------------------------
@@ -46,7 +48,7 @@ Singleton {
     readonly property color barText: Settings.barOnLight ? Qt.rgba(0, 0, 0, 0.85) : "white"
 
     // ---- shape --------------------------------------------------------------
-    readonly property int barHeight: 26
+    readonly property int barHeight: 24
     readonly property int menuRadius: 12
     readonly property int panelRadius: 22
     readonly property int tileRadius: 16

@@ -37,7 +37,38 @@ gtk-xft-rgba=none
 INI
 done
 command -v kvantummanager >/dev/null && kvantummanager --set "$kv" >/dev/null 2>&1
+mono=$(fc-list -q "SF Mono" && echo "SF Mono" || echo "JetBrainsMono Nerd Font")
+Mode=$([[ $mode == dark ]] && echo Dark || echo Light)
+
+# Qt (qt6ct): Kvantum style and its own palette — no custom (zero) palette
 qt="$HOME/.config/qt6ct/qt6ct.conf"
-[[ -f $qt ]] && sed -i -E "s/^icon_theme=.*/icon_theme=MacTahoe-$mode/; s/^style=.*/style=kvantum/" "$qt"
+mkdir -p "${qt%/*}"
+cat > "$qt" <<QT
+[Appearance]
+custom_palette=false
+icon_theme=MacTahoe-$mode
+standard_dialogs=xdgdesktopportal
+style=kvantum
+
+[Fonts]
+fixed="$mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+general="$font,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+QT
+
+# KDE apps (Dolphin, Kate…) read kdeglobals for colours, icons and fonts
+kg="$HOME/.config/kdeglobals"
+cs="$HOME/.local/share/color-schemes/MacTahoe$Mode.colors"
+if [[ -f $cs ]]; then
+  { cat "$cs"
+    printf '\n[General]\nColorScheme=MacTahoe%s\nfont=%s,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1\nfixed=%s,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1\n' "$Mode" "$font" "$mono"
+    printf '\n[Icons]\nTheme=MacTahoe-%s\n\n[KDE]\nwidgetStyle=kvantum\n' "$mode"
+  } > "$kg"
+fi
+
+# libadwaita (GTK4) apps ignore gtk-theme; they load ~/.config/gtk-4.0/gtk.css
+t="$HOME/.themes/MacTahoe-$Mode/gtk-4.0"
+if [[ -d $t ]]; then
+  for f in gtk.css gtk-dark.css assets windows-assets; do ln -sfn "$t/$f" "$HOME/.config/gtk-4.0/$f"; done
+fi
 pkill -$sig -x foot 2>/dev/null   # foot server: USR1 = dark palette, USR2 = light
 exit 0

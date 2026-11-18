@@ -72,6 +72,7 @@ Glass {
                     color: row.on ? "white" : (row.modelData.enabled === false || row.modelData.header) ? Theme.tertiary : Theme.label
                     font.family: Theme.font; font.pixelSize: Theme.textSize
                     font.weight: row.modelData.header ? Font.DemiBold : Font.Normal
+                    font.letterSpacing: Theme.tracking
                     renderType: Text.NativeRendering
                 }
                 Text {

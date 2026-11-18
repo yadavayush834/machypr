@@ -40,14 +40,6 @@ PanelWindow {
     Item {
         id: content
         anchors.fill: parent
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            shadowEnabled: !Settings.barOnLight
-            shadowColor: Qt.rgba(0, 0, 0, 0.45)
-            shadowBlur: 0.35
-            shadowVerticalOffset: 0.5
-            shadowHorizontalOffset: 0
-        }
 
         // ------------------------------------------------------------ left
         Row {
