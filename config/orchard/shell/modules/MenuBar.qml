@@ -25,7 +25,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Top
 
     // Hidden with fullscreen apps, like macOS (reveals at the top edge).
-    visible: !(Hypr.active && Hypr.active.fullscreen === 2)
+    visible: !(Hypr.active && Hypr.active.fullscreen === 2) && !Shell.mission && !Shell.launchpad
 
     // faint scrim keeps white text legible over bright wallpapers
     Rectangle {

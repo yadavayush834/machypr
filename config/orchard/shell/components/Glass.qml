@@ -31,40 +31,14 @@ Item {
         border.color: Theme.outline
         Behavior on color { ColorAnimation { duration: Theme.normal } }
     }
-    // inner specular rim, brighter along the top edge
+    // inner specular rim (Liquid Glass edge highlight)
     Rectangle {
         anchors.fill: parent
         anchors.margins: 0.5
         radius: g.radius - 0.5
         color: "transparent"
         border.width: 1
-        border.color: Theme.rimBottom
-    }
-    Rectangle {
-        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 0.5 }
-        height: g.radius * 1.4
-        radius: g.radius - 0.5
-        color: "transparent"
-        border.width: 1
-        border.color: Theme.rimTop
-        opacity: 0.55
-        layer.enabled: true
-        layer.effect: MultiEffect {
-            maskEnabled: true
-            maskSource: fade
-        }
-    }
-    Item {
-        id: fade
-        visible: false; layer.enabled: true
-        width: g.width; height: g.radius * 1.4
-        Rectangle {
-            anchors.fill: parent
-            gradient: Gradient {
-                GradientStop { position: 0; color: "white" }
-                GradientStop { position: 1; color: "transparent" }
-            }
-        }
+        border.color: Theme.dark ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(1, 1, 1, 0.55)
     }
     Item { id: inner; anchors.fill: parent }
 }

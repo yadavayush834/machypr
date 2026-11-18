@@ -145,7 +145,7 @@ PanelWindow {
                 id: shot
                 anchors.fill: parent
                 captureSource: Shell.mission ? mc.toplevel(w.addr) : null
-                live: false
+                live: Shell.mission
                 layer.enabled: true
                 layer.smooth: true
             }

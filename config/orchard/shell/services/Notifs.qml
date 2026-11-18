@@ -23,6 +23,7 @@ Singleton {
         onNotification: notif => {
             notif.tracked = true
             n.times[notif.id] = Date.now()
+            if (notif.lastGeneration) return      // re-delivered after a shell reload
             if (!Settings.focusMode || notif.urgency === NotificationUrgency.Critical) {
                 n.banners = [notif].concat(n.banners).slice(0, 4)
                 Quickshell.execDetached([Settings.bin + "sound", "notify"])
