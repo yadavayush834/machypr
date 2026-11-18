@@ -25,11 +25,13 @@
 | **Look** | MacTahoe GTK, icons, Kvantum and cursors (vinceliuice); Tahoe Dynamic Desktop wallpaper that crossfades day/night; light/dark switches GTK, Qt, icons and the terminal together. Fonts: SF Pro if installed, otherwise Inter with macOS-style grayscale rendering; web pages asking for `-apple-system` get the same. |
 | **Lock screen** | hyprlock: blurred wallpaper, date + large time at the top, avatar, name and glass password field at the bottom. |
 
-## ⌘ shortcuts
+## Keys
 
-⌘ is the Super key. ⌘C/V/X/Z/A/F/S/T/N/W/O/P/R/L/… go to the focused app as Ctrl (Ctrl+Shift in terminals), so copy/paste works the Mac way everywhere. ⌥←/→ jumps words, ⌘←/→ jumps to line start/end, ⌘[ / ⌘] go back/forward.
+All the zero keybindings work as before (⌘ = Super): ⌘Q/⌘Return terminal, ⌘C close, ⌘V float, ⌘F full screen, ⌘arrows focus, ⌘1–0 desktops, ⌘S screenshot, ⌘L lock, ⌘=/− brightness, and so on. Copy/paste stays on Ctrl.
 
-Changed from zero: lock is now ⌃⌘Q (⌘L focuses the browser address bar), brightness is ⌥⌘= / ⌥⌘- (this laptop's F11/F12 are disabled), terminal stays ⌘Return.
+Mac extras on keys zero never used: ⌘Space Spotlight, ⌘Tab apps, **⌥Tab every window with live previews** (all desktops + minimised; hold ⌥, Tab/arrows, release; W closes one), ⌘W next window of the same app, F3 / ⌃↑ Mission Control, F4 / ⌘A Launchpad, ⌘N minimise, ⌘H hide, ⌥⌘Q quit app, ⌥⌘Esc Force Quit, ⇧⌘3/4/5 Mac screenshots, ⌃⌥F/C/←/→ fill, centre, tile. ⌘/ shows the full sheet.
+
+The Dock auto-hides; rest the pointer on the bottom edge to show it (⇧⌘B toggles auto-hide).
 
 ## Install / switch
 
