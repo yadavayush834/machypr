@@ -11,7 +11,7 @@ import "../components"
 // macOS 26. ↑↓ choose, ↩ open, ⌘↩ reveal in Finder, ⎋ close.
 PanelWindow {
     id: sp
-    required property var modelData
+    property var modelData: Quickshell.screens[0]
     screen: modelData
     visible: Shell.spotlight
     anchors { top: true; left: true; right: true; bottom: true }
@@ -27,8 +27,10 @@ PanelWindow {
     property var files: []
     property var clips: []
 
-    onVisibleChanged: {
-        if (visible) {
+    Component.onCompleted: if (visible) init()
+    onVisibleChanged: if (visible) init()
+    function init() {
+        {
             mode = Shell.spotlightMode === "clipboard" ? "clipboard" : ""
             Shell.spotlightMode = ""
             field.text = ""; query = ""; current = 0

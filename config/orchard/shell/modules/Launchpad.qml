@@ -10,7 +10,7 @@ import "../components"
 // space to close. Zooms in like macOS.
 PanelWindow {
     id: lp
-    required property var modelData
+    property var modelData: Quickshell.screens[0]
     screen: modelData
     visible: Shell.launchpad || out.running
     anchors { top: true; left: true; right: true; bottom: true }
@@ -28,12 +28,14 @@ PanelWindow {
     property int page: 0
     onAppsChanged: page = 0
     onVisibleChanged: if (visible) { search.text = ""; page = 0; search.forceActiveFocus() }
+    property bool shown: false
+    Component.onCompleted: { search.forceActiveFocus(); shown = true }
 
     Rectangle {
         id: dim
         anchors.fill: parent
         color: Theme.dark ? Qt.rgba(0, 0, 0, 0.45) : Qt.rgba(0.1, 0.1, 0.12, 0.30)
-        opacity: Shell.launchpad ? 1 : 0
+        opacity: lp.shown && Shell.launchpad ? 1 : 0
         Behavior on opacity { NumberAnimation { id: out; duration: Theme.normal; easing.type: Theme.ease } }
         MouseArea { anchors.fill: parent; onClicked: Shell.launchpad = false
                     onWheel: w => lp.page = Math.max(0, Math.min(lp.pages - 1, lp.page + (w.angleDelta.y < 0 || w.angleDelta.x < 0 ? 1 : -1))) }

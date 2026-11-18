@@ -10,7 +10,7 @@ import "../components"
 // and accepts windows dragged onto it. Click a window to bring it forward.
 PanelWindow {
     id: mc
-    required property var modelData
+    property var modelData: Quickshell.screens[0]
     screen: modelData
     visible: Shell.mission || leaving.running
     anchors { top: true; left: true; right: true; bottom: true }
@@ -20,7 +20,9 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: Shell.mission ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
-    property real t: Shell.mission ? 1 : 0          // 0 = windows in place, 1 = grid
+    property real t: 0                               // 0 = windows in place, 1 = grid
+    property bool armed: false                       // start captures once our surface is mapped
+    Timer { running: true; interval: 80; onTriggered: mc.armed = true }
     Behavior on t { NumberAnimation { id: leaving; duration: Theme.slow; easing.type: Theme.easeInOut } }
 
     readonly property var wins: Hypr.here.filter(c => !c.hidden)
@@ -51,6 +53,7 @@ PanelWindow {
         Keys.onEscapePressed: Shell.mission = false
     }
     onVisibleChanged: if (visible) contentItem.forceActiveFocus()
+    Component.onCompleted: { contentItem.forceActiveFocus(); t = Qt.binding(() => Shell.mission ? 1 : 0) }
 
     // ---------------------------------------------------------- spaces bar
     Row {
@@ -144,7 +147,12 @@ PanelWindow {
             ScreencopyView {
                 id: shot
                 anchors.fill: parent
-                captureSource: Shell.mission ? mc.toplevel(w.addr) : null
+                property bool retry: false
+                captureSource: mc.armed && Shell.mission && !retry ? mc.toplevel(w.addr) : null
+                // the first frame request can race the overlay mapping; try again
+                property int tries: 0
+                onStopped: if (tries++ < 6) { retry = true; retryTimer.restart() }
+                Timer { id: retryTimer; interval: 120; onTriggered: shot.retry = false }
                 live: Shell.mission
                 layer.enabled: true
                 layer.smooth: true

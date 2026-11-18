@@ -8,6 +8,7 @@ import Quickshell.Io
 import Quickshell.Hyprland
 import "services"
 import "modules"
+import "components"
 
 // Orchard — a macOS 26 desktop for Hyprland, in one Quickshell process.
 ShellRoot {
@@ -17,12 +18,13 @@ ShellRoot {
     Variants { model: Quickshell.screens; Banners {} }
     Variants { model: Quickshell.screens; Hud {} }
     Variants { model: Quickshell.screens; Popups {} }
-    Variants { model: Quickshell.screens; Spotlight {} }
-    Variants { model: Quickshell.screens; Launchpad {} }
-    Variants { model: Quickshell.screens; MissionControl {} }
     Variants { model: Quickshell.screens; AppSwitcher {} }
-    Variants { model: Quickshell.screens; Dialogs {} }
-    SystemSettings {}
+    // heavy surfaces exist only while open
+    Lazy { when: Shell.spotlight; surface: Component { Spotlight {} } }
+    Lazy { when: Shell.launchpad; surface: Component { Launchpad {} } }
+    Lazy { when: Shell.mission; surface: Component { MissionControl {} } }
+    Lazy { when: Shell.about || Shell.forceQuit || Shell.confirm !== "" || Shell.shortcuts || Shell.shotMenu; surface: Component { Dialogs {} } }
+    Lazy { when: Shell.settings; grace: 0; surface: Component { SystemSettings {} } }
 
     // keyboard entry points (Hyprland: hl.dsp.global("orchard:<name>"))
     GlobalShortcut { appid: "orchard"; name: "spotlight";     onPressed: Shell.open("spotlight") }

@@ -11,7 +11,7 @@ import "../components"
 // Shortcuts, and the ⇧⌘5 screenshot toolbar.
 PanelWindow {
     id: dlg
-    required property var modelData
+    property var modelData: Quickshell.screens[0]
     screen: modelData
     readonly property bool any: Shell.about || Shell.forceQuit || Shell.confirm !== "" || Shell.shortcuts || Shell.shotMenu
     visible: any
@@ -37,6 +37,7 @@ PanelWindow {
         Keys.onReturnPressed: { if (Shell.confirm !== "") confirmBox.go(); else if (Shell.forceQuit) fq.kill(); else if (Shell.shotMenu) shot.capture() }
     }
     onVisibleChanged: if (visible) keys.forceActiveFocus()
+    Component.onCompleted: keys.forceActiveFocus()
 
     component Button: Rectangle {
         id: btn
